@@ -46,6 +46,8 @@ data/config/*
 *.xlsx
 *.xls
 logs/
+!data/logs/
+!data/logs/.gitkeep
 *.csv
 
 # Media captured/generated during runtime
@@ -77,3 +79,6 @@ desktop.ini
 
 # Local agent/tool metadata
 .agents/
+
+# Local phase execution reports
+.docs/phase_reports/

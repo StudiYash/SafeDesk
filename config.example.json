@@ -1,0 +1,69 @@
+{
+  "app": {
+    "name": "SafeDesk",
+    "version": "1.0.0-dev",
+    "environment": "development",
+    "demo_mode": true
+  },
+  "owner_profile": {
+    "display_name": "Owner",
+    "profile_id": "local-owner-placeholder",
+    "face_registration_required": false
+  },
+  "security_mode": {
+    "default_mode": "demo",
+    "available_modes": [
+      "standard",
+      "strict",
+      "silent_evidence",
+      "demo"
+    ]
+  },
+  "face_recognition": {
+    "enabled": false,
+    "backend": "planned",
+    "liveness_check_enabled": false,
+    "minimum_confidence": 0.6
+  },
+  "authentication": {
+    "password_fallback_enabled": false,
+    "panic_code_enabled": false,
+    "max_unlock_attempts": 3
+  },
+  "otp": {
+    "enabled": false,
+    "delivery_method": "email",
+    "code_length": 6,
+    "expires_seconds": 300
+  },
+  "threat_levels": {
+    "enabled": false,
+    "initial_level": 0,
+    "max_level": 5,
+    "forceful_attempt_threshold": 3
+  },
+  "shutdown": {
+    "real_shutdown_enabled": false,
+    "demo_shutdown_only": true,
+    "shutdown_after_threat_level": 5
+  },
+  "alarm": {
+    "enabled": false,
+    "volume": 0.5,
+    "audio_file": ""
+  },
+  "paths": {
+    "owner_data_dir": "data/owner",
+    "intruder_data_dir": "data/intruders",
+    "logs_dir": "data/logs",
+    "cache_dir": "data/cache",
+    "config_dir": "data/config"
+  },
+  "privacy": {
+    "store_intruder_images": false,
+    "store_owner_images": false,
+    "local_only_by_default": true,
+    "email_alerts_enabled": false,
+    "real_lockdown_enabled": false
+  }
+}

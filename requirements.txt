@@ -1,0 +1,28 @@
+# SafeDesk v1 planned dependencies
+# Phase 1 does not require installing these packages yet.
+
+# GUI
+# customtkinter
+
+# Computer vision
+# opencv-python
+# face_recognition
+
+# Authentication/security
+# bcrypt
+# argon2-cffi
+
+# Environment/config
+# python-dotenv
+
+# Database/logging
+# SQLAlchemy
+
+# Alarm/audio
+# pygame
+
+# Packaging
+# pyinstaller
+
+# Testing
+# pytest
