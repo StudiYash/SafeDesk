@@ -82,3 +82,6 @@ desktop.ini
 
 # Local phase execution reports
 .docs/phase_reports/
+
+# Local internal planning and execution documents
+.local_docs/
