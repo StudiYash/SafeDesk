@@ -1,9 +1,12 @@
 # Python cache
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.pyo
 *.pyd
 *.egg-info/
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv/

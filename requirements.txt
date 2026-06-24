@@ -1,5 +1,8 @@
-# SafeDesk v1 planned dependencies
-# Phase 1 does not require installing these packages yet.
+# SafeDesk v1 dependencies
+
+# Phase 3 configuration and tests
+python-dotenv
+pytest
 
 # GUI
 # customtkinter
@@ -13,7 +16,7 @@
 # argon2-cffi
 
 # Environment/config
-# python-dotenv
+# Additional configuration packages may be added only when needed.
 
 # Database/logging
 # SQLAlchemy
@@ -25,4 +28,4 @@
 # pyinstaller
 
 # Testing
-# pytest
+# Additional testing packages may be added only when needed.

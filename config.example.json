@@ -1,23 +1,27 @@
 {
   "app": {
     "name": "SafeDesk",
-    "version": "1.0.0-dev",
+    "version": "1.0.0",
     "environment": "development",
-    "demo_mode": true
+    "demo_safe_mode": true
   },
   "owner_profile": {
-    "display_name": "Owner",
-    "profile_id": "local-owner-placeholder",
-    "face_registration_required": false
+    "owner_name": "",
+    "owner_email": ""
   },
   "security_mode": {
-    "default_mode": "demo",
+    "default_mode": "demo_safe",
     "available_modes": [
       "standard",
       "strict",
       "silent_evidence",
-      "demo"
+      "demo_safe"
     ]
+  },
+  "feature_flags": {
+    "enable_real_email": false,
+    "enable_real_shutdown": false,
+    "enable_real_lockdown": false
   },
   "face_recognition": {
     "enabled": false,
@@ -28,13 +32,15 @@
   "authentication": {
     "password_fallback_enabled": false,
     "panic_code_enabled": false,
-    "max_unlock_attempts": 3
+    "max_unlock_attempts": 3,
+    "lockout_seconds": 30
   },
   "otp": {
     "enabled": false,
     "delivery_method": "email",
     "code_length": 6,
-    "expires_seconds": 300
+    "expires_seconds": 300,
+    "max_attempts": 3
   },
   "threat_levels": {
     "enabled": false,
@@ -45,12 +51,23 @@
   "shutdown": {
     "real_shutdown_enabled": false,
     "demo_shutdown_only": true,
-    "shutdown_after_threat_level": 5
+    "shutdown_after_threat_level": 5,
+    "warning_seconds": 30
+  },
+  "lockdown": {
+    "real_lockdown_enabled": false,
+    "demo_lockdown_only": true,
+    "allow_recovery_exit": true
   },
   "alarm": {
     "enabled": false,
     "volume": 0.5,
     "audio_file": ""
+  },
+  "logging": {
+    "enabled": false,
+    "database_path": "data/logs/safedesk.sqlite3",
+    "log_level": "INFO"
   },
   "paths": {
     "owner_data_dir": "data/owner",
@@ -63,7 +80,6 @@
     "store_intruder_images": false,
     "store_owner_images": false,
     "local_only_by_default": true,
-    "email_alerts_enabled": false,
-    "real_lockdown_enabled": false
+    "cloud_sync_enabled": false
   }
 }
