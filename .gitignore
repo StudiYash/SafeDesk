@@ -1,0 +1,79 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+Custom Environment/
+Custom Environment/env/
+
+# Environment and secrets
+.env
+*.env
+.env.*
+!.env.example
+config.local.json
+secrets.local.json
+secrets.json
+credentials.json
+token.json
+*.key
+*.pem
+
+# SafeDesk local/private runtime data
+data/owner/*
+data/intruders/*
+data/logs/*
+data/cache/*
+data/config/*
+!data/owner/.gitkeep
+!data/intruders/.gitkeep
+!data/logs/.gitkeep
+!data/cache/.gitkeep
+!data/config/.gitkeep
+
+# Databases and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.xlsx
+*.xls
+logs/
+*.csv
+
+# Media captured/generated during runtime
+intruder_*.jpg
+intruder_*.jpeg
+intruder_*.png
+owner_*.jpg
+owner_*.jpeg
+owner_*.png
+capture_*.jpg
+capture_*.jpeg
+capture_*.png
+
+# Build and packaging outputs
+build/
+dist/
+*.spec
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local agent/tool metadata
+.agents/
