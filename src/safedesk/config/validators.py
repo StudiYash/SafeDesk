@@ -20,6 +20,8 @@ from safedesk.utils.constants import (
     SUPPORTED_SECURITY_MODES,
 )
 
+SUPPORTED_UI_THEMES = ("dark", "light", "system")
+
 
 def _bool_config(config: dict[str, Any], section: str, key: str, default: bool = False) -> bool:
     value = config.get(section, {}).get(key, default)
@@ -61,7 +63,6 @@ def _effective_flags(config: dict[str, Any], env: EnvironmentSettings) -> tuple[
     feature_flags = config.get("feature_flags", {})
     shutdown = config.get("shutdown", {})
     lockdown = config.get("lockdown", {})
-    privacy = config.get("privacy", {})
 
     real_email = bool(feature_flags.get("enable_real_email", False)) or env.enable_real_email
     real_shutdown = (
@@ -128,10 +129,35 @@ def validate_config(
         ("threat_levels", "forceful_attempt_threshold"),
         ("shutdown", "shutdown_after_threat_level"),
         ("shutdown", "warning_seconds"),
+        ("ui", "window_width"),
+        ("ui", "window_height"),
+        ("ui", "minimum_width"),
+        ("ui", "minimum_height"),
     ):
         issue = _positive_int_issue(config, item)
         if issue:
             issues.append(issue)
+
+    ui = config.get("ui", {})
+    theme = ui.get("theme")
+    if theme not in SUPPORTED_UI_THEMES:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_ui_theme",
+                "`ui.theme` must be one of dark, light, or system.",
+            )
+        )
+
+    color_theme = ui.get("color_theme")
+    if not isinstance(color_theme, str) or not color_theme.strip():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_ui_color_theme",
+                "`ui.color_theme` must be a non-empty string.",
+            )
+        )
 
     real_email, real_shutdown, real_lockdown = _effective_flags(config, env)
     demo_safe_mode = bool(app.get("demo_safe_mode", True)) or security_mode == "demo_safe"

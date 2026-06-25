@@ -87,4 +87,13 @@ DEFAULT_CONFIG = {
         "local_only_by_default": True,
         "cloud_sync_enabled": False,
     },
+    "ui": {
+        "theme": "dark",
+        "color_theme": "blue",
+        "window_width": 1100,
+        "window_height": 700,
+        "minimum_width": 900,
+        "minimum_height": 600,
+        "start_maximized": False,
+    },
 }

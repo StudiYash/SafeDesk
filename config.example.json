@@ -81,5 +81,14 @@
     "store_owner_images": false,
     "local_only_by_default": true,
     "cloud_sync_enabled": false
+  },
+  "ui": {
+    "theme": "dark",
+    "color_theme": "blue",
+    "window_width": 1100,
+    "window_height": 700,
+    "minimum_width": 900,
+    "minimum_height": 600,
+    "start_maximized": false
   }
 }

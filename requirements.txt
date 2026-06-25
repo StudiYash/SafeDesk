@@ -5,7 +5,7 @@ python-dotenv
 pytest
 
 # GUI
-# customtkinter
+customtkinter
 
 # Computer vision
 # opencv-python

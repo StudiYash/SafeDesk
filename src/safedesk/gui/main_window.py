@@ -1,0 +1,94 @@
+"""Main SafeDesk GUI shell window."""
+
+from __future__ import annotations
+
+from typing import Callable
+
+import customtkinter as ctk
+
+from safedesk.app.application import RuntimeContext
+from safedesk.gui.components.sidebar_button import SidebarButton
+from safedesk.gui.navigation import (
+    ABOUT,
+    DASHBOARD,
+    HOME,
+    PROTECTED_MODE_PREVIEW,
+    SCREEN_DEFINITIONS,
+    SETUP_STATUS,
+    SETTINGS,
+)
+from safedesk.gui.screens.about_screen import AboutScreen
+from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
+from safedesk.gui.screens.home_screen import HomeScreen
+from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
+from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
+from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
+from safedesk.gui.theme import apply_theme
+
+
+class SafeDeskMainWindow(ctk.CTk):
+    """Safe placeholder desktop shell for SafeDesk."""
+
+    def __init__(self, context: RuntimeContext):
+        self.context = context
+        self.ui_config = context.load_result.config.get("ui", {})
+        apply_theme(self.ui_config)
+        super().__init__()
+
+        width = int(self.ui_config.get("window_width", 1100))
+        height = int(self.ui_config.get("window_height", 700))
+        min_width = int(self.ui_config.get("minimum_width", 900))
+        min_height = int(self.ui_config.get("minimum_height", 600))
+
+        self.title("SafeDesk")
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0)
+        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid_rowconfigure(len(SCREEN_DEFINITIONS) + 2, weight=1)
+
+        self.content = ctk.CTkFrame(self, corner_radius=0)
+        self.content.grid(row=0, column=1, sticky="nsew")
+        self.content.grid_columnconfigure(0, weight=1)
+        self.content.grid_rowconfigure(0, weight=1)
+
+        self.current_screen: ctk.CTkFrame | None = None
+        self.buttons: dict[str, SidebarButton] = {}
+        self.screen_factories: dict[str, Callable[[ctk.CTkFrame, RuntimeContext], ctk.CTkFrame]] = {
+            HOME: HomeScreen,
+            SETUP_STATUS: SetupStatusScreen,
+            PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
+            DASHBOARD: DashboardPlaceholderScreen,
+            SETTINGS: SettingsPlaceholderScreen,
+            ABOUT: AboutScreen,
+        }
+
+        self._build_sidebar()
+        self.show_screen(HOME)
+
+    def _build_sidebar(self) -> None:
+        title = ctk.CTkLabel(self.sidebar, text="SafeDesk", font=ctk.CTkFont(size=22, weight="bold"))
+        title.grid(row=0, column=0, padx=18, pady=(24, 4), sticky="ew")
+
+        mode = self.context.settings.security_mode
+        safe_mode = "Demo/safe mode enabled" if self.context.settings.demo_safe_mode else "Demo/safe mode disabled"
+        status = ctk.CTkLabel(self.sidebar, text=f"{mode}\n{safe_mode}", justify="left")
+        status.grid(row=1, column=0, padx=18, pady=(0, 20), sticky="ew")
+
+        for index, screen in enumerate(SCREEN_DEFINITIONS, start=2):
+            button = SidebarButton(self.sidebar, text=screen.label, command=lambda name=screen.name: self.show_screen(name))
+            button.grid(row=index, column=0, padx=14, pady=5, sticky="ew")
+            self.buttons[screen.name] = button
+
+    def show_screen(self, screen_name: str) -> None:
+        if self.current_screen is not None:
+            self.current_screen.destroy()
+
+        factory = self.screen_factories.get(screen_name, HomeScreen)
+        self.current_screen = factory(self.content, self.context)
+        self.current_screen.grid(row=0, column=0, sticky="nsew", padx=24, pady=24)
