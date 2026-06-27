@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 HOME = "home"
+SETUP_WIZARD = "setup_wizard"
 SETUP_STATUS = "setup_status"
 PROTECTED_MODE_PREVIEW = "protected_mode_preview"
 DASHBOARD = "dashboard"
@@ -19,6 +20,7 @@ class ScreenDefinition:
 
 SCREEN_DEFINITIONS = (
     ScreenDefinition(HOME, "Home", "SafeDesk GUI shell overview."),
+    ScreenDefinition(SETUP_WIZARD, "Setup Wizard", "Safe first-time setup placeholder."),
     ScreenDefinition(SETUP_STATUS, "Setup Status", "Configuration and readiness placeholders."),
     ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Preview", "Non-operational protected mode preview."),
     ScreenDefinition(DASHBOARD, "Dashboard", "Future intruder history and logs placeholder."),

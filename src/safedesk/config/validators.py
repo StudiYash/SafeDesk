@@ -23,6 +23,15 @@ from safedesk.utils.constants import (
 SUPPORTED_UI_THEMES = ("dark", "light", "system")
 
 
+def is_basic_email(value: str) -> bool:
+    """Return True when value looks like a basic email address."""
+
+    if "@" not in value:
+        return False
+    _, domain = value.rsplit("@", 1)
+    return "." in domain and bool(domain.split(".", 1)[0]) and bool(domain.rsplit(".", 1)[-1])
+
+
 def _bool_config(config: dict[str, Any], section: str, key: str, default: bool = False) -> bool:
     value = config.get(section, {}).get(key, default)
     return bool(value)
@@ -96,6 +105,58 @@ def validate_config(
                 "error",
                 "unsupported_environment",
                 "`SAFEDESK_ENV` or `app.environment` is not supported.",
+            )
+        )
+
+    setup = config.get("setup", {})
+    setup_completed = setup.get("completed", False)
+    if not isinstance(setup_completed, bool):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_setup_completed",
+                "`setup.completed` must be a boolean.",
+            )
+        )
+        setup_completed = False
+
+    setup_version_issue = _positive_int_issue(config, ("setup", "setup_version"))
+    if setup_version_issue:
+        issues.append(setup_version_issue)
+
+    for key in ("completed_at", "last_updated_at"):
+        if not isinstance(setup.get(key, ""), str):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_setup_timestamp",
+                    f"`setup.{key}` must be a string.",
+                )
+            )
+
+    owner_profile = config.get("owner_profile", {})
+    owner_name = owner_profile.get("owner_name", "")
+    owner_email = owner_profile.get("owner_email", "")
+    if not isinstance(owner_name, str):
+        issues.append(ConfigValidationIssue("error", "invalid_owner_name", "`owner_profile.owner_name` must be a string."))
+        owner_name = ""
+    if not isinstance(owner_email, str):
+        issues.append(ConfigValidationIssue("error", "invalid_owner_email", "`owner_profile.owner_email` must be a string."))
+        owner_email = ""
+    if setup_completed and not owner_name.strip():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "missing_setup_owner_name",
+                "Completed setup requires an owner display name.",
+            )
+        )
+    if owner_email.strip() and not is_basic_email(owner_email.strip()):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_owner_email_format",
+                "`owner_profile.owner_email` must use a basic email format when provided.",
             )
         )
 

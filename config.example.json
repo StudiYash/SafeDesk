@@ -9,6 +9,12 @@
     "owner_name": "",
     "owner_email": ""
   },
+  "setup": {
+    "completed": false,
+    "setup_version": 1,
+    "completed_at": "",
+    "last_updated_at": ""
+  },
   "security_mode": {
     "default_mode": "demo_safe",
     "available_modes": [

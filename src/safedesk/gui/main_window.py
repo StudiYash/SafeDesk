@@ -15,6 +15,7 @@ from safedesk.gui.navigation import (
     PROTECTED_MODE_PREVIEW,
     SCREEN_DEFINITIONS,
     SETUP_STATUS,
+    SETUP_WIZARD,
     SETTINGS,
 )
 from safedesk.gui.screens.about_screen import AboutScreen
@@ -23,6 +24,7 @@ from safedesk.gui.screens.home_screen import HomeScreen
 from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
 from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
 from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
+from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
 from safedesk.gui.theme import apply_theme
 
 
@@ -61,6 +63,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self.buttons: dict[str, SidebarButton] = {}
         self.screen_factories: dict[str, Callable[[ctk.CTkFrame, RuntimeContext], ctk.CTkFrame]] = {
             HOME: HomeScreen,
+            SETUP_WIZARD: SetupWizardScreen,
             SETUP_STATUS: SetupStatusScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             DASHBOARD: DashboardPlaceholderScreen,

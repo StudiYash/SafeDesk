@@ -19,6 +19,12 @@ DEFAULT_CONFIG = {
         "owner_name": "",
         "owner_email": "",
     },
+    "setup": {
+        "completed": False,
+        "setup_version": 1,
+        "completed_at": "",
+        "last_updated_at": "",
+    },
     "security_mode": {
         "default_mode": DEFAULT_SECURITY_MODE,
         "available_modes": list(SUPPORTED_SECURITY_MODES),

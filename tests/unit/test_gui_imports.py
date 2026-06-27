@@ -13,6 +13,7 @@ from safedesk.gui.navigation import (
     PROTECTED_MODE_PREVIEW,
     SCREEN_NAMES,
     SETUP_STATUS,
+    SETUP_WIZARD,
     SETTINGS,
 )
 
@@ -20,6 +21,7 @@ from safedesk.gui.navigation import (
 def test_navigation_metadata_contains_expected_screens():
     assert set(SCREEN_NAMES) == {
         HOME,
+        SETUP_WIZARD,
         SETUP_STATUS,
         PROTECTED_MODE_PREVIEW,
         DASHBOARD,
@@ -29,6 +31,10 @@ def test_navigation_metadata_contains_expected_screens():
 
 
 def test_gui_modules_import_without_opening_window():
+    import pytest
+
+    pytest.importorskip("customtkinter")
+
     import safedesk.gui.main_window
     import safedesk.gui.theme
 
