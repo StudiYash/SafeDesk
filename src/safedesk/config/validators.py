@@ -21,6 +21,7 @@ from safedesk.utils.constants import (
 )
 
 SUPPORTED_UI_THEMES = ("dark", "light", "system")
+SUPPORTED_OWNER_SAMPLE_FORMATS = ("jpg", "png")
 
 
 def is_basic_email(value: str) -> bool:
@@ -64,6 +65,16 @@ def _path_issue(root: Path, key: str, raw_value: Any) -> ConfigValidationIssue |
             "warning",
             "runtime_path_missing",
             f"`paths.{key}` does not exist yet and should be created by setup before use.",
+        )
+    return None
+
+
+def _non_empty_string_issue(section: str, key: str, value: Any) -> ConfigValidationIssue | None:
+    if not isinstance(value, str) or not value.strip():
+        return ConfigValidationIssue(
+            "error",
+            "invalid_non_empty_string",
+            f"`{section}.{key}` must be a non-empty string.",
         )
     return None
 
@@ -217,6 +228,69 @@ def validate_config(
                 "error",
                 "invalid_ui_color_theme",
                 "`ui.color_theme` must be a non-empty string.",
+            )
+        )
+
+    owner_registration = config.get("owner_face_registration", {})
+    if not isinstance(owner_registration.get("enabled", True), bool):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_owner_registration_enabled",
+                "`owner_face_registration.enabled` must be a boolean.",
+            )
+        )
+
+    for item in (
+        ("owner_face_registration", "required_samples"),
+        ("owner_face_registration", "image_quality"),
+    ):
+        issue = _positive_int_issue(config, item)
+        if issue:
+            issues.append(issue)
+
+    camera_index = owner_registration.get("camera_index")
+    if isinstance(camera_index, bool) or not isinstance(camera_index, int) or camera_index < 0:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_owner_registration_camera_index",
+                "`owner_face_registration.camera_index` must be zero or a positive integer.",
+            )
+        )
+
+    for key in ("samples_dir", "manifest_path"):
+        issue = _non_empty_string_issue("owner_face_registration", key, owner_registration.get(key))
+        if issue:
+            issues.append(issue)
+
+    image_format = owner_registration.get("image_format")
+    if image_format not in SUPPORTED_OWNER_SAMPLE_FORMATS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_owner_registration_image_format",
+                "`owner_face_registration.image_format` must be jpg or png.",
+            )
+        )
+
+    image_quality = owner_registration.get("image_quality")
+    if isinstance(image_quality, int) and not isinstance(image_quality, bool) and not 1 <= image_quality <= 100:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_owner_registration_image_quality",
+                "`owner_face_registration.image_quality` must be between 1 and 100.",
+            )
+        )
+
+    face_recognition_enabled = bool(config.get("face_recognition", {}).get("enabled", False))
+    if face_recognition_enabled:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "face_recognition_not_enabled_in_phase_6",
+                "`face_recognition.enabled` must remain false in this phase.",
             )
         )
 

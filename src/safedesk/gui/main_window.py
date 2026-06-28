@@ -12,6 +12,7 @@ from safedesk.gui.navigation import (
     ABOUT,
     DASHBOARD,
     HOME,
+    OWNER_FACE_REGISTRATION,
     PROTECTED_MODE_PREVIEW,
     SCREEN_DEFINITIONS,
     SETUP_STATUS,
@@ -21,6 +22,7 @@ from safedesk.gui.navigation import (
 from safedesk.gui.screens.about_screen import AboutScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
 from safedesk.gui.screens.home_screen import HomeScreen
+from safedesk.gui.screens.owner_face_registration_screen import OwnerFaceRegistrationScreen
 from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
 from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
 from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
@@ -65,6 +67,7 @@ class SafeDeskMainWindow(ctk.CTk):
             HOME: HomeScreen,
             SETUP_WIZARD: SetupWizardScreen,
             SETUP_STATUS: SetupStatusScreen,
+            OWNER_FACE_REGISTRATION: OwnerFaceRegistrationScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             DASHBOARD: DashboardPlaceholderScreen,
             SETTINGS: SettingsPlaceholderScreen,
@@ -90,8 +93,19 @@ class SafeDeskMainWindow(ctk.CTk):
 
     def show_screen(self, screen_name: str) -> None:
         if self.current_screen is not None:
+            self._release_current_screen_resources()
             self.current_screen.destroy()
 
         factory = self.screen_factories.get(screen_name, HomeScreen)
         self.current_screen = factory(self.content, self.context)
         self.current_screen.grid(row=0, column=0, sticky="nsew", padx=24, pady=24)
+
+    def _release_current_screen_resources(self) -> None:
+        if self.current_screen is not None:
+            release = getattr(self.current_screen, "release_resources", None)
+            if callable(release):
+                release()
+
+    def destroy(self) -> None:
+        self._release_current_screen_resources()
+        super().destroy()

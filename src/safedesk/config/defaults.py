@@ -40,6 +40,15 @@ DEFAULT_CONFIG = {
         "liveness_check_enabled": False,
         "minimum_confidence": 0.6,
     },
+    "owner_face_registration": {
+        "enabled": True,
+        "required_samples": 5,
+        "camera_index": 0,
+        "samples_dir": "data/owner/samples",
+        "manifest_path": "data/config/owner_registration_manifest.json",
+        "image_format": "jpg",
+        "image_quality": 90,
+    },
     "authentication": {
         "password_fallback_enabled": False,
         "panic_code_enabled": False,

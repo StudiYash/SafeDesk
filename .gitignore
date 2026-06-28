@@ -41,6 +41,10 @@ data/config/*
 !data/cache/.gitkeep
 !data/config/.gitkeep
 
+# Local owner face registration data
+data/owner/samples/
+data/config/owner_registration_manifest.json
+
 # Databases and logs
 *.db
 *.sqlite

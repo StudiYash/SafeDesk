@@ -8,8 +8,8 @@ pytest
 customtkinter
 
 # Computer vision
-# opencv-python
-# face_recognition
+opencv-python
+Pillow
 
 # Authentication/security
 # bcrypt
