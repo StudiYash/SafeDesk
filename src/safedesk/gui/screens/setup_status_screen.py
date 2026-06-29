@@ -25,6 +25,7 @@ class SetupStatusScreen(ctk.CTkFrame):
         recognition_config = context.load_result.config.get("owner_recognition", {})
         recognition_required = int(recognition_config.get("minimum_samples_required", 5))
         recognition_ready = registration_status.sample_count >= recognition_required
+        liveness_config = context.load_result.config.get("liveness", {})
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -81,6 +82,8 @@ class SetupStatusScreen(ctk.CTkFrame):
                 ("Recognition samples", f"{registration_status.sample_count} saved / {recognition_required} required"),
                 ("Recognition model", str(recognition_config.get("model_name", "ArcFace"))),
                 ("Recognition detector", str(recognition_config.get("detector_backend", "retinaface"))),
+                ("Liveness demo", "available" if liveness_config.get("enabled", True) else "disabled"),
+                ("Liveness mode", "demo only" if liveness_config.get("demo_only", True) else "review required"),
             ],
             accent=ds.SAFEDESK_ALERT,
         ).grid(row=3, column=0, sticky="nsew", padx=(4, 8), pady=6)

@@ -28,6 +28,7 @@ class HomeScreen(ctk.CTkFrame):
         recognition_config = context.load_result.config.get("owner_recognition", {})
         recognition_required = int(recognition_config.get("minimum_samples_required", 5))
         recognition_ready = registration_status.sample_count >= recognition_required
+        liveness_config = context.load_result.config.get("liveness", {})
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -81,6 +82,8 @@ class HomeScreen(ctk.CTkFrame):
                 ("Owner samples", f"{registration_status.sample_count} saved / {registration_status.required_sample_count} required"),
                 ("Recognition demo", "ready" if recognition_ready else "not ready"),
                 ("Recognition model", str(recognition_config.get("model_name", "ArcFace"))),
+                ("Liveness demo", "available" if liveness_config.get("enabled", True) else "disabled"),
+                ("Liveness mode", "demo only" if liveness_config.get("demo_only", True) else "review required"),
             ],
             accent=ds.SAFEDESK_ALERT,
         ).grid(row=3, column=0, sticky="nsew", padx=(4, 8), pady=6)

@@ -375,6 +375,62 @@ def validate_config(
         if issue:
             issues.append(issue)
 
+    liveness = config.get("liveness", {})
+    for key in ("enabled", "demo_only"):
+        if not isinstance(liveness.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_liveness_boolean",
+                    f"`liveness.{key}` must be a boolean.",
+                )
+            )
+
+    if liveness.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "liveness_demo_only_required",
+                "`liveness.demo_only` must remain true in Phase 8.",
+            )
+        )
+
+    for item in (
+        ("liveness", "challenge_duration_seconds"),
+        ("liveness", "minimum_detection_frames"),
+    ):
+        issue = _positive_int_issue(config, item)
+        if issue:
+            issues.append(issue)
+
+    movement_threshold_issue = _number_range_issue(
+        "liveness",
+        "movement_threshold_ratio",
+        liveness.get("movement_threshold_ratio"),
+        0,
+        1,
+    )
+    if movement_threshold_issue:
+        issues.append(movement_threshold_issue)
+    elif float(liveness.get("movement_threshold_ratio")) <= 0:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_liveness_movement_threshold",
+                "`liveness.movement_threshold_ratio` must be greater than 0 and less than or equal to 1.",
+            )
+        )
+
+    liveness_camera_index = liveness.get("camera_index")
+    if isinstance(liveness_camera_index, bool) or not isinstance(liveness_camera_index, int) or liveness_camera_index < 0:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_liveness_camera_index",
+                "`liveness.camera_index` must be zero or a positive integer.",
+            )
+        )
+
     real_email, real_shutdown, real_lockdown = _effective_flags(config, env)
     demo_safe_mode = bool(app.get("demo_safe_mode", True)) or security_mode == "demo_safe"
 

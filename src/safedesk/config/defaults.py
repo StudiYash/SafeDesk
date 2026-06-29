@@ -63,6 +63,14 @@ DEFAULT_CONFIG = {
         "uncertain_margin": 0.05,
         "offline_after_model_setup": True,
     },
+    "liveness": {
+        "enabled": True,
+        "challenge_duration_seconds": 8,
+        "movement_threshold_ratio": 0.08,
+        "minimum_detection_frames": 3,
+        "camera_index": 0,
+        "demo_only": True,
+    },
     "authentication": {
         "password_fallback_enabled": False,
         "panic_code_enabled": False,

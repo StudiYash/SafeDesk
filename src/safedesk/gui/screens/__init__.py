@@ -4,6 +4,7 @@ from safedesk.gui.screens.about_screen import AboutScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
 from safedesk.gui.screens.home_screen import HomeScreen
+from safedesk.gui.screens.liveness_demo_screen import LivenessDemoScreen
 from safedesk.gui.screens.owner_face_registration_screen import OwnerFaceRegistrationScreen
 from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
 from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
@@ -15,6 +16,7 @@ __all__ = [
     "DashboardPlaceholderScreen",
     "FaceRecognitionDemoScreen",
     "HomeScreen",
+    "LivenessDemoScreen",
     "OwnerFaceRegistrationScreen",
     "ProtectedModePreviewScreen",
     "SettingsPlaceholderScreen",
