@@ -2,6 +2,7 @@
 
 import customtkinter as ctk
 
+from safedesk.alerts.email_sender import build_email_settings_status
 from safedesk.app.application import RuntimeContext
 from safedesk.auth.authentication_service import AuthenticationService
 from safedesk.config.setup_state import get_setup_status
@@ -31,6 +32,8 @@ class HomeScreen(ctk.CTkFrame):
         recognition_ready = registration_status.sample_count >= recognition_required
         liveness_config = context.load_result.config.get("liveness", {})
         auth_status = AuthenticationService(context.load_result.config).build_status()
+        otp_config = context.load_result.config.get("otp", {})
+        email_status = build_email_settings_status(context.env, context.load_result.config, context.settings)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -100,6 +103,9 @@ class HomeScreen(ctk.CTkFrame):
                 ("Master password", "configured" if auth_status.master_password_configured else "pending"),
                 ("Panic code", "configured" if auth_status.panic_code_configured else "pending"),
                 ("Auth mode", "foundation only" if auth_status.demo_only else "review required"),
+                ("OTP foundation", "available" if otp_config.get("otp_foundation_enabled", True) else "disabled"),
+                ("OTP receiver", "configured" if email_status.receiver_configured else "missing"),
+                ("Email app password", "present" if email_status.app_password_present else "missing"),
                 ("Final unlock", "not implemented"),
             ],
             accent=ds.SAFEDESK_DEEP_RED,

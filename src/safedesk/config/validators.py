@@ -52,6 +52,18 @@ def _positive_int_issue(config: dict[str, Any], path: tuple[str, str]) -> Config
     return None
 
 
+def _non_negative_int_issue(config: dict[str, Any], path: tuple[str, str]) -> ConfigValidationIssue | None:
+    section, key = path
+    value = config.get(section, {}).get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return ConfigValidationIssue(
+            "error",
+            "invalid_non_negative_integer",
+            f"`{section}.{key}` must be zero or a positive integer.",
+        )
+    return None
+
+
 def _path_issue(root: Path, key: str, raw_value: Any) -> ConfigValidationIssue | None:
     if not isinstance(raw_value, str) or not raw_value.strip():
         return ConfigValidationIssue(
@@ -210,9 +222,6 @@ def validate_config(
         )
 
     for item in (
-        ("otp", "code_length"),
-        ("otp", "expires_seconds"),
-        ("otp", "max_attempts"),
         ("threat_levels", "max_level"),
         ("threat_levels", "forceful_attempt_threshold"),
         ("shutdown", "shutdown_after_threat_level"),
@@ -225,6 +234,85 @@ def validate_config(
         issue = _positive_int_issue(config, item)
         if issue:
             issues.append(issue)
+
+    otp = config.get("otp", {})
+    for key in ("enabled", "otp_foundation_enabled", "demo_only"):
+        if not isinstance(otp.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_otp_boolean",
+                    f"`otp.{key}` must be a boolean.",
+                )
+            )
+
+    if otp.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "otp_demo_only_required",
+                "`otp.demo_only` must remain true in Phase 10.",
+            )
+        )
+
+    if otp.get("enabled") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "otp_final_auth_not_connected",
+                "`otp.enabled` must remain false until protected-mode OTP authentication is connected.",
+            )
+        )
+
+    if otp.get("delivery_method") != "email":
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_otp_delivery_method",
+                "`otp.delivery_method` must be email in Phase 10.",
+            )
+        )
+
+    for item in (
+        ("otp", "code_length"),
+        ("otp", "expires_seconds"),
+        ("otp", "max_attempts"),
+        ("otp", "resend_limit"),
+    ):
+        issue = _positive_int_issue(config, item)
+        if issue:
+            issues.append(issue)
+
+    resend_cooldown_issue = _non_negative_int_issue(config, ("otp", "resend_cooldown_seconds"))
+    if resend_cooldown_issue:
+        issues.append(resend_cooldown_issue)
+
+    email = config.get("email", {})
+    issue = _non_empty_string_issue("email", "smtp_host", email.get("smtp_host"))
+    if issue:
+        issues.append(issue)
+
+    smtp_port_issue = _positive_int_issue(config, ("email", "smtp_port"))
+    if smtp_port_issue:
+        issues.append(smtp_port_issue)
+
+    timeout_issue = _positive_int_issue(config, ("email", "timeout_seconds"))
+    if timeout_issue:
+        issues.append(timeout_issue)
+
+    sender_name_issue = _non_empty_string_issue("email", "sender_display_name", email.get("sender_display_name"))
+    if sender_name_issue:
+        issues.append(sender_name_issue)
+
+    for key in ("use_tls", "demo_only"):
+        if not isinstance(email.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_email_boolean",
+                    f"`email.{key}` must be a boolean.",
+                )
+            )
 
     authentication = config.get("authentication", {})
     for key in ("password_fallback_enabled", "panic_code_enabled", "auth_foundation_enabled", "demo_only"):

@@ -81,10 +81,22 @@
   },
   "otp": {
     "enabled": false,
+    "otp_foundation_enabled": true,
+    "demo_only": true,
     "delivery_method": "email",
     "code_length": 6,
-    "expires_seconds": 300,
-    "max_attempts": 3
+    "expires_seconds": 120,
+    "max_attempts": 3,
+    "resend_limit": 2,
+    "resend_cooldown_seconds": 30
+  },
+  "email": {
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "use_tls": true,
+    "timeout_seconds": 15,
+    "sender_display_name": "SafeDesk",
+    "demo_only": true
   },
   "threat_levels": {
     "enabled": false,

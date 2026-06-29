@@ -9,6 +9,7 @@ OWNER_FACE_REGISTRATION = "owner_face_registration"
 FACE_RECOGNITION_DEMO = "face_recognition_demo"
 LIVENESS_DEMO = "liveness_demo"
 AUTHENTICATION_SETUP = "authentication_setup"
+OTP_EMAIL_SETUP = "otp_email_setup"
 PROTECTED_MODE_PREVIEW = "protected_mode_preview"
 DASHBOARD = "dashboard"
 SETTINGS = "settings"
@@ -30,6 +31,7 @@ SCREEN_DEFINITIONS = (
     ScreenDefinition(FACE_RECOGNITION_DEMO, "Face Recognition Demo", "Local owner recognition demo."),
     ScreenDefinition(LIVENESS_DEMO, "Liveness Demo", "Basic movement challenge demo foundation."),
     ScreenDefinition(AUTHENTICATION_SETUP, "Authentication Setup", "Local password and panic-code foundation."),
+    ScreenDefinition(OTP_EMAIL_SETUP, "OTP & Email Setup", "Manual OTP and email foundation."),
     ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Preview", "Non-operational protected mode preview."),
     ScreenDefinition(DASHBOARD, "Dashboard", "Future intruder history and logs placeholder."),
     ScreenDefinition(SETTINGS, "Settings", "Future settings placeholder."),

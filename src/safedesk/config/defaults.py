@@ -86,10 +86,22 @@ DEFAULT_CONFIG = {
     },
     "otp": {
         "enabled": False,
+        "otp_foundation_enabled": True,
+        "demo_only": True,
         "delivery_method": "email",
         "code_length": 6,
-        "expires_seconds": 300,
+        "expires_seconds": 120,
         "max_attempts": 3,
+        "resend_limit": 2,
+        "resend_cooldown_seconds": 30,
+    },
+    "email": {
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "use_tls": True,
+        "timeout_seconds": 15,
+        "sender_display_name": "SafeDesk",
+        "demo_only": True,
     },
     "threat_levels": {
         "enabled": False,

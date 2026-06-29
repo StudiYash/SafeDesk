@@ -18,6 +18,15 @@ from safedesk.auth.local_secret_store import (
     resolve_secrets_path,
     save_authentication_secrets,
 )
+from safedesk.auth.otp_manager import (
+    OtpConfig,
+    OtpGenerationResult,
+    OtpManager,
+    OtpSendEligibilityResult,
+    OtpSession,
+    OtpSessionStatus,
+    OtpVerificationResult,
+)
 from safedesk.auth.password_hashing import (
     HASH_ALGORITHM,
     PasswordHashRecord,
@@ -40,6 +49,13 @@ __all__ = [
     "HASH_ALGORITHM",
     "LocalSecretStore",
     "LocalSecretStoreResult",
+    "OtpConfig",
+    "OtpGenerationResult",
+    "OtpManager",
+    "OtpSendEligibilityResult",
+    "OtpSession",
+    "OtpSessionStatus",
+    "OtpVerificationResult",
     "PasswordHashRecord",
     "PasswordHashResult",
     "PasswordVerificationResult",

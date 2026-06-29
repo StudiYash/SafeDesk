@@ -38,3 +38,20 @@ def test_environment_settings_sanitize_secret_presence(tmp_path):
     assert settings.email_app_password_present is True
     assert not hasattr(settings, "email_app_password")
     assert settings.enable_real_email is True
+
+
+def test_safedesk_prefixed_email_environment_names_work(tmp_path):
+    settings = load_environment(
+        env_file=tmp_path / ".env",
+        environ={
+            "SAFEDESK_EMAIL_SENDER_ADDRESS": "sender@example.com",
+            "SAFEDESK_EMAIL_APP_PASSWORD": "private-value",
+            "SAFEDESK_OTP_RECEIVER_EMAIL": "receiver@example.com",
+            "SAFEDESK_ENABLE_REAL_EMAIL": "true",
+        },
+    )
+
+    assert settings.email_sender_address == "sender@example.com"
+    assert settings.email_app_password_present is True
+    assert settings.otp_receiver_email == "receiver@example.com"
+    assert settings.enable_real_email is True
