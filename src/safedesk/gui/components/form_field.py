@@ -8,7 +8,7 @@ from safedesk.gui import design_system as ds
 class FormField(ctk.CTkFrame):
     """Small labelled text entry wrapper."""
 
-    def __init__(self, master, label: str, placeholder: str = "", **kwargs):
+    def __init__(self, master, label: str, placeholder: str = "", show: str | None = None, **kwargs):
         super().__init__(master, fg_color="transparent", **kwargs)
         self.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
@@ -21,6 +21,7 @@ class FormField(ctk.CTkFrame):
         self.entry = ctk.CTkEntry(
             self,
             placeholder_text=placeholder,
+            show=show,
             fg_color=ds.CARD_BG_ALT,
             border_color=ds.BORDER_MUTED,
             text_color=ds.TEXT_PRIMARY,
@@ -34,3 +35,6 @@ class FormField(ctk.CTkFrame):
     def set(self, value: str) -> None:
         self.entry.delete(0, "end")
         self.entry.insert(0, value)
+
+    def clear(self) -> None:
+        self.entry.delete(0, "end")

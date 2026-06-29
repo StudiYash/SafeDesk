@@ -8,6 +8,7 @@ if str(SRC) not in sys.path:
 
 from safedesk.gui.navigation import (
     ABOUT,
+    AUTHENTICATION_SETUP,
     DASHBOARD,
     FACE_RECOGNITION_DEMO,
     HOME,
@@ -29,6 +30,7 @@ def test_navigation_metadata_contains_expected_screens():
         OWNER_FACE_REGISTRATION,
         FACE_RECOGNITION_DEMO,
         LIVENESS_DEMO,
+        AUTHENTICATION_SETUP,
         PROTECTED_MODE_PREVIEW,
         DASHBOARD,
         SETTINGS,

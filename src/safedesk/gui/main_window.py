@@ -11,6 +11,7 @@ from safedesk.gui import design_system as ds
 from safedesk.gui.components.sidebar_button import SidebarButton
 from safedesk.gui.navigation import (
     ABOUT,
+    AUTHENTICATION_SETUP,
     DASHBOARD,
     FACE_RECOGNITION_DEMO,
     HOME,
@@ -23,6 +24,7 @@ from safedesk.gui.navigation import (
     SETTINGS,
 )
 from safedesk.gui.screens.about_screen import AboutScreen
+from safedesk.gui.screens.authentication_setup_screen import AuthenticationSetupScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
 from safedesk.gui.screens.home_screen import HomeScreen
@@ -61,7 +63,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=246, corner_radius=0, fg_color=ds.SIDEBAR_BG)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_columnconfigure(0, weight=1)
-        self.sidebar.grid_rowconfigure(len(SCREEN_DEFINITIONS) + 3, weight=1)
+        self.sidebar.grid_rowconfigure(3, weight=1)
 
         self.content = ctk.CTkFrame(self, corner_radius=0, fg_color=ds.CONTENT_BG)
         self.content.grid(row=0, column=1, sticky="nsew")
@@ -77,6 +79,7 @@ class SafeDeskMainWindow(ctk.CTk):
             OWNER_FACE_REGISTRATION: OwnerFaceRegistrationScreen,
             FACE_RECOGNITION_DEMO: FaceRecognitionDemoScreen,
             LIVENESS_DEMO: LivenessDemoScreen,
+            AUTHENTICATION_SETUP: AuthenticationSetupScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             DASHBOARD: DashboardPlaceholderScreen,
             SETTINGS: SettingsPlaceholderScreen,
@@ -131,8 +134,18 @@ class SafeDeskMainWindow(ctk.CTk):
             anchor="w",
         ).grid(row=1, column=0, padx=12, pady=(0, 10), sticky="ew")
 
-        for index, screen in enumerate(SCREEN_DEFINITIONS, start=3):
-            button = SidebarButton(self.sidebar, text=screen.label, command=lambda name=screen.name: self.show_screen(name))
+        self.nav_frame = ctk.CTkScrollableFrame(
+            self.sidebar,
+            fg_color=ds.SIDEBAR_BG,
+            corner_radius=0,
+            scrollbar_button_color=ds.BORDER_MUTED,
+            scrollbar_button_hover_color=ds.SAFEDESK_RED,
+        )
+        self.nav_frame.grid(row=3, column=0, sticky="nsew", padx=0, pady=(0, 12))
+        self.nav_frame.grid_columnconfigure(0, weight=1)
+
+        for index, screen in enumerate(SCREEN_DEFINITIONS):
+            button = SidebarButton(self.nav_frame, text=screen.label, command=lambda name=screen.name: self.show_screen(name))
             button.grid(row=index, column=0, padx=14, pady=4, sticky="ew")
             self.buttons[screen.name] = button
 

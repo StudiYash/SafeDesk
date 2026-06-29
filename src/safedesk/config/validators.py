@@ -23,6 +23,7 @@ from safedesk.utils.constants import (
 SUPPORTED_UI_THEMES = ("dark", "light", "system")
 SUPPORTED_OWNER_SAMPLE_FORMATS = ("jpg", "png")
 SUPPORTED_RECOGNITION_METRICS = ("cosine", "euclidean", "euclidean_l2")
+SUPPORTED_AUTH_HASH_ALGORITHMS = ("pbkdf2_sha256",)
 
 
 def is_basic_email(value: str) -> bool:
@@ -209,8 +210,6 @@ def validate_config(
         )
 
     for item in (
-        ("authentication", "max_unlock_attempts"),
-        ("authentication", "lockout_seconds"),
         ("otp", "code_length"),
         ("otp", "expires_seconds"),
         ("otp", "max_attempts"),
@@ -222,6 +221,82 @@ def validate_config(
         ("ui", "window_height"),
         ("ui", "minimum_width"),
         ("ui", "minimum_height"),
+    ):
+        issue = _positive_int_issue(config, item)
+        if issue:
+            issues.append(issue)
+
+    authentication = config.get("authentication", {})
+    for key in ("password_fallback_enabled", "panic_code_enabled", "auth_foundation_enabled", "demo_only"):
+        if not isinstance(authentication.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_authentication_boolean",
+                    f"`authentication.{key}` must be a boolean.",
+                )
+            )
+
+    if authentication.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "authentication_demo_only_required",
+                "`authentication.demo_only` must remain true in Phase 9.",
+            )
+        )
+
+    if authentication.get("password_fallback_enabled") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "password_fallback_not_connected",
+                "`authentication.password_fallback_enabled` must remain false until protected-mode authentication is connected.",
+            )
+        )
+
+    if authentication.get("panic_code_enabled") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "panic_code_not_connected",
+                "`authentication.panic_code_enabled` must remain false until protected-mode recovery authentication is connected.",
+            )
+        )
+
+    secrets_path = authentication.get("secrets_path")
+    if not isinstance(secrets_path, str) or not secrets_path.strip():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_authentication_secrets_path",
+                "`authentication.secrets_path` must be a non-empty relative path.",
+            )
+        )
+    elif Path(secrets_path).is_absolute():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "absolute_authentication_secrets_path",
+                "`authentication.secrets_path` must remain relative to the SafeDesk project root.",
+            )
+        )
+
+    if authentication.get("hash_algorithm") not in SUPPORTED_AUTH_HASH_ALGORITHMS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_authentication_hash_algorithm",
+                "`authentication.hash_algorithm` must be pbkdf2_sha256.",
+            )
+        )
+
+    for item in (
+        ("authentication", "pbkdf2_iterations"),
+        ("authentication", "minimum_password_length"),
+        ("authentication", "minimum_panic_code_length"),
+        ("authentication", "max_unlock_attempts"),
+        ("authentication", "lockout_seconds"),
     ):
         issue = _positive_int_issue(config, item)
         if issue:

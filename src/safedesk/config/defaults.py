@@ -74,6 +74,13 @@ DEFAULT_CONFIG = {
     "authentication": {
         "password_fallback_enabled": False,
         "panic_code_enabled": False,
+        "auth_foundation_enabled": True,
+        "demo_only": True,
+        "secrets_path": "secrets.local.json",
+        "hash_algorithm": "pbkdf2_sha256",
+        "pbkdf2_iterations": 390000,
+        "minimum_password_length": 8,
+        "minimum_panic_code_length": 6,
         "max_unlock_attempts": 3,
         "lockout_seconds": 30,
     },
