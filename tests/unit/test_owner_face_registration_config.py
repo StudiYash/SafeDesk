@@ -43,4 +43,4 @@ def test_face_recognition_must_remain_disabled():
     report = validate_config(config, load_environment(environ={}), root=ROOT)
 
     assert report.is_valid is False
-    assert "face_recognition_not_enabled_in_phase_6" in {issue.code for issue in report.errors}
+    assert "final_face_recognition_auth_disabled" in {issue.code for issue in report.errors}

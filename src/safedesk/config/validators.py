@@ -22,6 +22,7 @@ from safedesk.utils.constants import (
 
 SUPPORTED_UI_THEMES = ("dark", "light", "system")
 SUPPORTED_OWNER_SAMPLE_FORMATS = ("jpg", "png")
+SUPPORTED_RECOGNITION_METRICS = ("cosine", "euclidean", "euclidean_l2")
 
 
 def is_basic_email(value: str) -> bool:
@@ -75,6 +76,22 @@ def _non_empty_string_issue(section: str, key: str, value: Any) -> ConfigValidat
             "error",
             "invalid_non_empty_string",
             f"`{section}.{key}` must be a non-empty string.",
+        )
+    return None
+
+
+def _number_range_issue(
+    section: str,
+    key: str,
+    value: Any,
+    minimum: float,
+    maximum: float,
+) -> ConfigValidationIssue | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not minimum <= float(value) <= maximum:
+        return ConfigValidationIssue(
+            "error",
+            "invalid_number_range",
+            f"`{section}.{key}` must be a number between {minimum} and {maximum}.",
         )
     return None
 
@@ -289,10 +306,74 @@ def validate_config(
         issues.append(
             ConfigValidationIssue(
                 "error",
-                "face_recognition_not_enabled_in_phase_6",
-                "`face_recognition.enabled` must remain false in this phase.",
+                "final_face_recognition_auth_disabled",
+                "`face_recognition.enabled` must remain false for the demo foundation.",
             )
         )
+
+    owner_recognition = config.get("owner_recognition", {})
+    if not isinstance(owner_recognition.get("enabled", True), bool):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_owner_recognition_enabled",
+                "`owner_recognition.enabled` must be a boolean.",
+            )
+        )
+
+    for key in ("model_name", "detector_backend", "profile_path", "cache_dir"):
+        issue = _non_empty_string_issue("owner_recognition", key, owner_recognition.get(key))
+        if issue:
+            issues.append(issue)
+
+    if owner_recognition.get("model_name") != "ArcFace":
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_owner_recognition_model",
+                "`owner_recognition.model_name` must be ArcFace in this phase.",
+            )
+        )
+
+    if owner_recognition.get("detector_backend") != "retinaface":
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_owner_recognition_detector",
+                "`owner_recognition.detector_backend` must be retinaface in this phase.",
+            )
+        )
+
+    if owner_recognition.get("distance_metric") not in SUPPORTED_RECOGNITION_METRICS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_owner_recognition_metric",
+                "`owner_recognition.distance_metric` must be cosine, euclidean, or euclidean_l2.",
+            )
+        )
+
+    for key in ("align", "enforce_detection", "offline_after_model_setup"):
+        if not isinstance(owner_recognition.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_owner_recognition_boolean",
+                    f"`owner_recognition.{key}` must be a boolean.",
+                )
+            )
+
+    minimum_samples_issue = _positive_int_issue(config, ("owner_recognition", "minimum_samples_required"))
+    if minimum_samples_issue:
+        issues.append(minimum_samples_issue)
+
+    for key, minimum, maximum in (
+        ("demo_threshold", 0, 2),
+        ("uncertain_margin", 0, 1),
+    ):
+        issue = _number_range_issue("owner_recognition", key, owner_recognition.get(key), minimum, maximum)
+        if issue:
+            issues.append(issue)
 
     real_email, real_shutdown, real_lockdown = _effective_flags(config, env)
     demo_safe_mode = bool(app.get("demo_safe_mode", True)) or security_mode == "demo_safe"

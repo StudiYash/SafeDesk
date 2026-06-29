@@ -10,6 +10,9 @@ customtkinter
 # Computer vision
 opencv-python
 Pillow
+deepface
+retina-face
+tf-keras
 
 # Authentication/security
 # bcrypt

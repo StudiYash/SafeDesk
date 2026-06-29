@@ -45,6 +45,11 @@ data/config/*
 data/owner/samples/
 data/config/owner_registration_manifest.json
 
+# Local owner recognition artifacts
+data/config/owner_recognition_profile.json
+data/cache/deepface/
+data/cache/recognition/
+
 # Databases and logs
 *.db
 *.sqlite

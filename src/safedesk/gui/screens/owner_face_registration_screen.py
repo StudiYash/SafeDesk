@@ -5,7 +5,10 @@ from pathlib import Path
 import customtkinter as ctk
 
 from safedesk.app.application import RuntimeContext
+from safedesk.gui import design_system as ds
 from safedesk.gui.components.info_banner import InfoBanner
+from safedesk.gui.components.page_header import PageHeader
+from safedesk.gui.components.scrollable_page import ScrollablePage
 from safedesk.storage.paths import project_root
 from safedesk.vision.camera_manager import CameraManager
 from safedesk.vision.owner_manifest import build_registration_status
@@ -19,14 +22,14 @@ class OwnerFaceRegistrationScreen(ctk.CTkFrame):
     """
 
     def __init__(self, master, context: RuntimeContext):
-        super().__init__(master)
+        super().__init__(master, fg_color=ds.CONTENT_BG)
         self.context = context
         self.registration_config = context.load_result.config.get("owner_face_registration", {})
         self.camera = CameraManager(int(self.registration_config.get("camera_index", 0)))
         self.current_frame = None
         self.preview_image = None
         self.preview_after_id = None
-        self.preview_size = (560, 315)
+        self.preview_size = (500, 281)
 
         self.samples_dir = self._resolve_path(self.registration_config.get("samples_dir", "data/owner/samples"))
         self.manifest_path = self._resolve_path(
@@ -35,40 +38,111 @@ class OwnerFaceRegistrationScreen(ctk.CTkFrame):
         self.required_samples = int(self.registration_config.get("required_samples", 5))
 
         self.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(self, text="Owner Face Registration", font=ctk.CTkFont(size=22, weight="bold")).grid(
-            row=0,
-            column=0,
-            sticky="w",
-            padx=6,
-            pady=(0, 6),
-        )
+        self.grid_rowconfigure(0, weight=1)
+
+        page = ScrollablePage(self)
+        page.grid(row=0, column=0, sticky="nsew")
+
+        PageHeader(
+            page,
+            "Owner Face Registration",
+            "Capture local owner face samples for later recognition phases.",
+        ).grid(row=0, column=0, sticky="ew", padx=4, pady=(0, 10))
+
         InfoBanner(
-            self,
+            page,
             "Owner samples are sensitive local biometric data. They are saved only under ignored local runtime folders. "
             "This phase does not perform recognition, matching, liveness checks, unlock, intruder detection, lockdown, or shutdown.",
-        ).grid(row=1, column=0, sticky="ew", padx=6, pady=(0, 8))
+            kind="warning",
+            compact=True,
+        ).grid(row=1, column=0, sticky="ew", padx=4, pady=(0, 12))
 
-        self.status_label = ctk.CTkLabel(self, text="", justify="left", anchor="w")
-        self.status_label.grid(row=2, column=0, sticky="ew", padx=6, pady=(0, 6))
+        workspace = ctk.CTkFrame(page, fg_color="transparent")
+        workspace.grid(row=2, column=0, sticky="nsew", padx=4, pady=0)
+        workspace.grid_columnconfigure(0, weight=1, uniform="registration")
+        workspace.grid_columnconfigure(1, weight=1, uniform="registration")
 
-        button_row = ctk.CTkFrame(self, fg_color="transparent")
-        button_row.grid(row=3, column=0, sticky="w", padx=6, pady=(0, 8))
-        ctk.CTkButton(button_row, text="Start Camera", command=self.start_camera).grid(row=0, column=0, padx=(0, 8))
-        ctk.CTkButton(button_row, text="Capture Sample", command=self.capture_sample).grid(row=0, column=1, padx=8)
-        ctk.CTkButton(button_row, text="Stop Camera", command=self.stop_camera).grid(row=0, column=2, padx=8)
-        ctk.CTkButton(button_row, text="Refresh Status", command=self.refresh_status).grid(row=0, column=3, padx=8)
+        left_panel = ctk.CTkFrame(workspace, **ds.card_kwargs())
+        left_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        left_panel.grid_columnconfigure(0, weight=1)
 
-        self.preview_frame = ctk.CTkFrame(self, width=self.preview_size[0], height=self.preview_size[1])
-        self.preview_frame.grid(row=4, column=0, sticky="w", padx=6, pady=(0, 8))
+        ctk.CTkLabel(
+            left_panel,
+            text="Registration Status",
+            font=ctk.CTkFont(size=ds.FONT_H3, weight="bold"),
+            text_color=ds.TEXT_PRIMARY,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(ds.SPACE_LG, ds.SPACE_SM))
+
+        self.status_label = ctk.CTkLabel(
+            left_panel,
+            text="",
+            justify="left",
+            anchor="w",
+            text_color=ds.TEXT_SECONDARY,
+            wraplength=380,
+        )
+        self.status_label.grid(row=1, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_MD))
+
+        button_row = ctk.CTkFrame(left_panel, fg_color="transparent")
+        button_row.grid(row=2, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_MD))
+        for column in (0, 1):
+            button_row.grid_columnconfigure(column, weight=1)
+        ctk.CTkButton(button_row, text="Start Camera", command=self.start_camera, **ds.primary_button_kwargs()).grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, 6),
+            pady=(0, 8),
+        )
+        ctk.CTkButton(button_row, text="Capture Sample", command=self.capture_sample, **ds.primary_button_kwargs()).grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(6, 0),
+            pady=(0, 8),
+        )
+        ctk.CTkButton(button_row, text="Stop Camera", command=self.stop_camera, **ds.secondary_button_kwargs()).grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            padx=(0, 6),
+        )
+        ctk.CTkButton(button_row, text="Refresh Status", command=self.refresh_status, **ds.secondary_button_kwargs()).grid(
+            row=1,
+            column=1,
+            sticky="ew",
+            padx=(6, 0),
+        )
+
+        self.message_banner = InfoBanner(
+            left_panel,
+            "Camera is not started. Click Start Camera only when ready.",
+            kind="neutral",
+            compact=True,
+            wraplength=360,
+        )
+        self.message_banner.grid(row=3, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_LG))
+
+        preview_panel = ctk.CTkFrame(workspace, **ds.card_kwargs())
+        preview_panel.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        preview_panel.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            preview_panel,
+            text="Camera Preview",
+            font=ctk.CTkFont(size=ds.FONT_H3, weight="bold"),
+            text_color=ds.TEXT_PRIMARY,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(ds.SPACE_LG, ds.SPACE_SM))
+
+        self.preview_frame = ctk.CTkFrame(preview_panel, width=self.preview_size[0], height=self.preview_size[1], **ds.panel_kwargs())
+        self.preview_frame.grid(row=1, column=0, sticky="n", padx=ds.SPACE_LG, pady=(0, ds.SPACE_LG))
         self.preview_frame.grid_propagate(False)
         self.preview_frame.grid_columnconfigure(0, weight=1)
         self.preview_frame.grid_rowconfigure(0, weight=1)
 
-        self.preview_label = ctk.CTkLabel(self.preview_frame, text="Camera preview is stopped.")
-        self.preview_label.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
-
-        self.message_banner = InfoBanner(self, "Camera is not started. Click Start Camera only when ready.")
-        self.message_banner.grid(row=5, column=0, sticky="ew", padx=6, pady=(0, 0))
+        self._create_preview_label("Camera preview is stopped.")
         self.refresh_status()
 
     def _resolve_path(self, value: str) -> Path:
@@ -153,8 +227,15 @@ class OwnerFaceRegistrationScreen(ctk.CTkFrame):
     def _clear_preview(self, message: str = "Camera preview is stopped.") -> None:
         self.preview_image = None
         self.current_frame = None
-        self.preview_label.configure(image=None)
-        self.preview_label.configure(text=message)
+        try:
+            self.preview_label.destroy()
+        except Exception:
+            pass
+        self._create_preview_label(message)
+
+    def _create_preview_label(self, message: str = "Camera preview is stopped.") -> None:
+        self.preview_label = ctk.CTkLabel(self.preview_frame, text=message, text_color=ds.TEXT_SECONDARY, wraplength=420)
+        self.preview_label.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
 
     def destroy(self) -> None:
         self.release_resources()

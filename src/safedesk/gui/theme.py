@@ -14,6 +14,5 @@ def apply_theme(ui_config: dict[str, Any]) -> None:
     if theme not in VALID_THEMES:
         theme = "dark"
 
-    color_theme = str(ui_config.get("color_theme", "blue")).strip() or "blue"
     ctk.set_appearance_mode(theme)
-    ctk.set_default_color_theme(color_theme)
+    ctk.set_default_color_theme("dark-blue")
