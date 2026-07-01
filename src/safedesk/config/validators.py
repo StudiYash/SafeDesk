@@ -24,6 +24,8 @@ SUPPORTED_UI_THEMES = ("dark", "light", "system")
 SUPPORTED_OWNER_SAMPLE_FORMATS = ("jpg", "png")
 SUPPORTED_RECOGNITION_METRICS = ("cosine", "euclidean", "euclidean_l2")
 SUPPORTED_AUTH_HASH_ALGORITHMS = ("pbkdf2_sha256",)
+SUPPORTED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
+SUPPORTED_LOG_DB_SUFFIXES = (".sqlite", ".sqlite3", ".db")
 
 
 def is_basic_email(value: str) -> bool:
@@ -385,6 +387,71 @@ def validate_config(
         ("authentication", "minimum_panic_code_length"),
         ("authentication", "max_unlock_attempts"),
         ("authentication", "lockout_seconds"),
+    ):
+        issue = _positive_int_issue(config, item)
+        if issue:
+            issues.append(issue)
+
+    logging_config = config.get("logging", {})
+    for key in ("enabled", "demo_only"):
+        if not isinstance(logging_config.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_logging_boolean",
+                    f"`logging.{key}` must be a boolean.",
+                )
+            )
+
+    if logging_config.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "logging_demo_only_required",
+                "`logging.demo_only` must remain true in Phase 11.",
+            )
+        )
+
+    database_path = logging_config.get("database_path")
+    if not isinstance(database_path, str) or not database_path.strip():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_logging_database_path",
+                "`logging.database_path` must be a non-empty relative path.",
+            )
+        )
+    else:
+        log_path = Path(database_path)
+        if log_path.is_absolute():
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "absolute_logging_database_path",
+                    "`logging.database_path` must remain relative to the SafeDesk project root.",
+                )
+            )
+        if log_path.suffix.lower() not in SUPPORTED_LOG_DB_SUFFIXES:
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_logging_database_extension",
+                    "`logging.database_path` must end with .sqlite, .sqlite3, or .db.",
+                )
+            )
+
+    if logging_config.get("log_level") not in SUPPORTED_LOG_LEVELS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_logging_level",
+                "`logging.log_level` must be DEBUG, INFO, WARNING, or ERROR.",
+            )
+        )
+
+    for item in (
+        ("logging", "max_recent_events"),
+        ("logging", "retention_days"),
     ):
         issue = _positive_int_issue(config, item)
         if issue:

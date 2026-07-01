@@ -121,9 +121,12 @@
     "audio_file": ""
   },
   "logging": {
-    "enabled": false,
+    "enabled": true,
     "database_path": "data/logs/safedesk.sqlite3",
-    "log_level": "INFO"
+    "log_level": "INFO",
+    "demo_only": true,
+    "max_recent_events": 50,
+    "retention_days": 30
   },
   "paths": {
     "owner_data_dir": "data/owner",

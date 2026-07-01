@@ -126,9 +126,12 @@ DEFAULT_CONFIG = {
         "audio_file": "",
     },
     "logging": {
-        "enabled": False,
+        "enabled": True,
         "database_path": "data/logs/safedesk.sqlite3",
         "log_level": "INFO",
+        "demo_only": True,
+        "max_recent_events": 50,
+        "retention_days": 30,
     },
     "paths": {
         "owner_data_dir": "data/owner",

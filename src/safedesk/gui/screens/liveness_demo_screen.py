@@ -7,6 +7,7 @@ from safedesk.gui import design_system as ds
 from safedesk.gui.components.info_banner import InfoBanner
 from safedesk.gui.components.page_header import PageHeader
 from safedesk.gui.components.scrollable_page import ScrollablePage
+from safedesk.logging.event_logger import build_logger_from_config
 from safedesk.vision.camera_manager import CameraManager
 from safedesk.vision.liveness_challenge import LivenessChallenge, challenge_instruction, create_liveness_challenge
 from safedesk.vision.liveness_detector import LivenessDetectionResult, LivenessDetectionState, update_liveness_state
@@ -24,6 +25,7 @@ class LivenessDemoScreen(ctk.CTkFrame):
         super().__init__(master, fg_color=ds.CONTENT_BG)
         self.context = context
         self.liveness_config = context.load_result.config.get("liveness", {})
+        self.event_logger = build_logger_from_config(context.load_result.config)
         self.camera = CameraManager(int(self.liveness_config.get("camera_index", 0)))
         self.current_frame = None
         self.preview_image = None
@@ -286,6 +288,15 @@ class LivenessDemoScreen(ctk.CTkFrame):
         if result.state.completed:
             self.liveness_active = False
             self.operation_label.configure(text="Operation: idle")
+            self._log_liveness_event(
+                "liveness_check_completed",
+                "success" if result.passed else "failed",
+                {
+                    "result_status": result.status,
+                    "passed": result.passed,
+                    "timed_out": result.timed_out,
+                },
+            )
         else:
             self.operation_label.configure(text="Operation: liveness challenge running")
 
@@ -319,6 +330,33 @@ class LivenessDemoScreen(ctk.CTkFrame):
     def _create_preview_label(self, message: str = "Camera preview is stopped.") -> None:
         self.preview_label = ctk.CTkLabel(self.preview_frame, text=message, text_color=ds.TEXT_SECONDARY, wraplength=420)
         self.preview_label.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
+
+    @staticmethod
+    def build_liveness_log_message(action: str, result_status: str, passed: bool | None = None) -> str:
+        if action == "liveness_check_completed":
+            final_status = "passed" if passed else "failed"
+            return f"Liveness challenge completed with status: {final_status}."
+        return "Liveness demo event completed."
+
+    def _log_liveness_event(self, action: str, status: str, metadata: dict | None = None) -> None:
+        try:
+            safe_metadata = {
+                "demo_only": True,
+            }
+            if metadata:
+                safe_metadata.update(metadata)
+            result_status = str(safe_metadata.get("result_status", "unknown"))
+            passed = safe_metadata.get("passed")
+            self.event_logger.log_event(
+                category="liveness_demo",
+                action=action,
+                status=status,
+                severity="WARNING" if status in {"failed", "blocked"} else "INFO",
+                message=self.build_liveness_log_message(action, result_status, passed if isinstance(passed, bool) else None),
+                metadata=safe_metadata,
+            )
+        except Exception:
+            pass
 
     def destroy(self) -> None:
         self.release_resources()

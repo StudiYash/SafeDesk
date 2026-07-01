@@ -45,6 +45,7 @@ def test_start_liveness_check_respects_disabled_config_without_window():
         def set_message(self, message):
             self.message = message
 
+    log_calls = []
     dummy = SimpleNamespace(
         liveness_config={"enabled": False},
         camera=SimpleNamespace(is_opened=True),
@@ -53,6 +54,7 @@ def test_start_liveness_check_respects_disabled_config_without_window():
         operation_label=FakeLabel(),
         message_banner=FakeBanner(),
         result_label=FakeLabel(),
+        _log_liveness_event=lambda *args, **kwargs: log_calls.append(args),
     )
 
     LivenessDemoScreen.start_liveness_check(dummy)
@@ -62,6 +64,7 @@ def test_start_liveness_check_respects_disabled_config_without_window():
     assert dummy.operation_label.text == "Operation: idle"
     assert "disabled in configuration" in dummy.message_banner.message
     assert "liveness.enabled is false" in dummy.result_label.text
+    assert log_calls == []
 
 
 def test_liveness_demo_screen_imports_without_opening_window():
@@ -70,3 +73,23 @@ def test_liveness_demo_screen_imports_without_opening_window():
     import safedesk.gui.screens.liveness_demo_screen
 
     assert safedesk.gui.screens.liveness_demo_screen.LivenessDemoScreen is not None
+
+
+def test_liveness_log_messages_are_generic():
+    pytest.importorskip("customtkinter")
+
+    from safedesk.gui.screens.liveness_demo_screen import LivenessDemoScreen
+
+    failed = LivenessDemoScreen.build_liveness_log_message("liveness_check_completed", "timeout", False)
+    passed = LivenessDemoScreen.build_liveness_log_message("liveness_check_completed", "passed", True)
+
+    assert failed == "Liveness challenge completed with status: failed."
+    assert passed == "Liveness challenge completed with status: passed."
+    for text in (failed, passed):
+        assert "FaceBox" not in text
+        assert "frame" not in text.lower()
+        assert "path" not in text.lower()
+        assert "image" not in text.lower()
+        assert "embedding" not in text.lower()
+        assert "threshold" not in text.lower()
+        assert "exception" not in text.lower()

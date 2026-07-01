@@ -13,6 +13,7 @@ from safedesk.gui.navigation import (
     ABOUT,
     AUTHENTICATION_SETUP,
     DASHBOARD,
+    EVENT_LOGS,
     FACE_RECOGNITION_DEMO,
     HOME,
     LIVENESS_DEMO,
@@ -30,6 +31,7 @@ from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlacehold
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
 from safedesk.gui.screens.home_screen import HomeScreen
 from safedesk.gui.screens.liveness_demo_screen import LivenessDemoScreen
+from safedesk.gui.screens.logging_dashboard_screen import LoggingDashboardScreen
 from safedesk.gui.screens.owner_face_registration_screen import OwnerFaceRegistrationScreen
 from safedesk.gui.screens.otp_email_setup_screen import OtpEmailSetupScreen
 from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
@@ -83,6 +85,7 @@ class SafeDeskMainWindow(ctk.CTk):
             LIVENESS_DEMO: LivenessDemoScreen,
             AUTHENTICATION_SETUP: AuthenticationSetupScreen,
             OTP_EMAIL_SETUP: OtpEmailSetupScreen,
+            EVENT_LOGS: LoggingDashboardScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             DASHBOARD: DashboardPlaceholderScreen,
             SETTINGS: SettingsPlaceholderScreen,

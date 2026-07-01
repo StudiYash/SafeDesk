@@ -12,6 +12,7 @@ from safedesk.gui import design_system as ds
 from safedesk.gui.components.info_banner import InfoBanner
 from safedesk.gui.components.page_header import PageHeader
 from safedesk.gui.components.scrollable_page import ScrollablePage
+from safedesk.logging.event_logger import build_logger_from_config
 from safedesk.storage.paths import project_root
 from safedesk.vision.camera_manager import CameraManager
 from safedesk.vision.compute_device import ComputeDeviceStatus, detect_compute_device
@@ -30,6 +31,7 @@ class FaceRecognitionDemoScreen(ctk.CTkFrame):
         self.context = context
         self.recognition_config = context.load_result.config.get("owner_recognition", {})
         self.registration_config = context.load_result.config.get("owner_face_registration", {})
+        self.event_logger = build_logger_from_config(context.load_result.config)
         self.camera = CameraManager(int(self.registration_config.get("camera_index", 0)))
         self.current_frame = None
         self.preview_image = None
@@ -368,6 +370,10 @@ class FaceRecognitionDemoScreen(ctk.CTkFrame):
             self._set_result_display(
                 "Last recognition result: Not ready\nReason: start the camera and wait for a preview frame before running recognition."
             )
+            self._log_recognition_event(
+                "blocked",
+                {"result_status": "camera_not_ready"},
+            )
             return
 
         frame_snapshot = self.current_frame.copy() if hasattr(self.current_frame, "copy") else self.current_frame
@@ -379,6 +385,13 @@ class FaceRecognitionDemoScreen(ctk.CTkFrame):
             if result.best_distance is None:
                 self._set_result_display(f"Last recognition result: Not ready\nReason: {result.message}")
                 self.message_banner.set_message("Recognition failed safely.")
+                self._log_recognition_event(
+                    "skipped" if not result.ready else "failed",
+                    {
+                        "result_status": "not_ready" if not result.ready else "failed",
+                        "samples_checked": result.samples_checked,
+                    },
+                )
             else:
                 result_lines = [
                     f"Last recognition result: {result.message}",
@@ -390,6 +403,14 @@ class FaceRecognitionDemoScreen(ctk.CTkFrame):
                 self._set_result_display("\n".join(result_lines))
                 self.message_banner.set_message(
                     f"Recognition finished: {result.message.lower()}."
+                )
+                event_status = "success" if result.recognized else "blocked" if result.uncertain else "failed"
+                self._log_recognition_event(
+                    event_status,
+                    {
+                        "result_status": "recognized" if result.recognized else "uncertain" if result.uncertain else "not_recognized",
+                        "samples_checked": result.samples_checked,
+                    },
                 )
 
         self._set_result_display("Last recognition result: verification running...")
@@ -427,6 +448,36 @@ class FaceRecognitionDemoScreen(ctk.CTkFrame):
     def _create_preview_label(self, message: str = "Camera preview is stopped.") -> None:
         self.preview_label = ctk.CTkLabel(self.preview_frame, text=message, text_color=ds.TEXT_SECONDARY, wraplength=420)
         self.preview_label.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
+
+    @staticmethod
+    def build_recognition_log_message(result_status: str) -> str:
+        if result_status == "camera_not_ready":
+            return "Recognition demo check was blocked because camera/frame was not ready."
+        if result_status == "not_ready":
+            return "Recognition demo check was skipped because prerequisites were not ready."
+        if result_status in {"recognized", "not_recognized", "uncertain", "failed"}:
+            return f"Recognition demo check completed with status: {result_status}."
+        return "Recognition demo check completed with status: unknown."
+
+    def _log_recognition_event(self, status: str, metadata: dict | None = None) -> None:
+        try:
+            safe_metadata = {
+                "sample_count": self._sample_count(),
+                "demo_only": True,
+            }
+            if metadata:
+                safe_metadata.update(metadata)
+            result_status = str(safe_metadata.get("result_status", "unknown"))
+            self.event_logger.log_event(
+                category="recognition_demo",
+                action="manual_recognition_check",
+                status=status,
+                severity="WARNING" if status in {"failed", "blocked"} else "INFO",
+                message=self.build_recognition_log_message(result_status),
+                metadata=safe_metadata,
+            )
+        except Exception:
+            pass
 
     def destroy(self) -> None:
         self._is_destroyed = True

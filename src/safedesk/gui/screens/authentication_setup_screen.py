@@ -9,6 +9,7 @@ from safedesk.gui.components.form_field import FormField
 from safedesk.gui.components.info_banner import InfoBanner
 from safedesk.gui.components.page_header import PageHeader
 from safedesk.gui.components.scrollable_page import ScrollablePage
+from safedesk.logging.event_logger import build_logger_from_config
 
 
 class AuthenticationSetupScreen(ctk.CTkFrame):
@@ -18,6 +19,7 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         super().__init__(master, fg_color=ds.CONTENT_BG)
         self.context = context
         self.service = AuthenticationService(context.load_result.config)
+        self.event_logger = build_logger_from_config(context.load_result.config)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -189,6 +191,7 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         if result.success:
             self.master_password.clear()
             self.confirm_master_password.clear()
+        self._log_auth_action("master_password_setup", result.success, result.status)
         self.result_banner.set_message(result.message)
         self.refresh_status()
 
@@ -201,11 +204,18 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         if result.success:
             self.panic_code.clear()
             self.confirm_panic_code.clear()
+        self._log_auth_action("panic_code_setup", result.success, result.status)
         self.result_banner.set_message(result.message)
         self.refresh_status()
 
     def verify_master_password(self) -> None:
         result = self.service.verify_master_password(self.verify_password_input.get())
+        self._log_auth_action(
+            "master_password_verification",
+            result.success,
+            result.status,
+            {"attempts_remaining": result.remaining_attempts},
+        )
         self.result_banner.set_message(
             self._verification_message("Master Password", result.status, result.message, result.remaining_attempts)
         )
@@ -213,6 +223,12 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
 
     def verify_panic_code(self) -> None:
         result = self.service.verify_panic_code(self.verify_panic_input.get())
+        self._log_auth_action(
+            "panic_code_verification",
+            result.success,
+            result.status,
+            {"attempts_remaining": result.remaining_attempts},
+        )
         self.result_banner.set_message(self._verification_message("Panic code", result.status, result.message, result.remaining_attempts))
         self.refresh_status()
 
@@ -237,3 +253,24 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         if status == "failed":
             return f"{label}: not verified. Attempts remaining: {remaining_attempts}."
         return f"{label}: {message}"
+
+    def _log_auth_action(self, action: str, success: bool, result_status: str, metadata: dict | None = None) -> None:
+        safe_metadata = {"result_status": result_status}
+        if metadata:
+            safe_metadata.update(metadata)
+        self.event_logger.log_auth_event(
+            action=action,
+            status=self._event_status(success, result_status),
+            message=f"Authentication foundation action completed with status: {result_status}.",
+            metadata=safe_metadata,
+        )
+
+    @staticmethod
+    def _event_status(success: bool, result_status: str) -> str:
+        if success:
+            return "success"
+        if result_status == "locked_out":
+            return "blocked"
+        if result_status in {"not_configured", "disabled"}:
+            return "skipped"
+        return "failed"

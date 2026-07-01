@@ -11,6 +11,7 @@ from safedesk.gui.components.info_banner import InfoBanner
 from safedesk.gui.components.page_header import PageHeader
 from safedesk.gui.components.scrollable_page import ScrollablePage
 from safedesk.gui.components.status_card import StatusCard
+from safedesk.logging.event_logger import build_logger_from_config
 from safedesk.storage.paths import project_root
 from safedesk.vision.owner_manifest import build_registration_status
 
@@ -34,6 +35,9 @@ class HomeScreen(ctk.CTkFrame):
         auth_status = AuthenticationService(context.load_result.config).build_status()
         otp_config = context.load_result.config.get("otp", {})
         email_status = build_email_settings_status(context.env, context.load_result.config, context.settings)
+        log_status = build_logger_from_config(context.load_result.config).store.build_status(
+            enabled=context.load_result.config.get("logging", {}).get("enabled", True)
+        )
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -106,6 +110,8 @@ class HomeScreen(ctk.CTkFrame):
                 ("OTP foundation", "available" if otp_config.get("otp_foundation_enabled", True) else "disabled"),
                 ("OTP receiver", "configured" if email_status.receiver_configured else "missing"),
                 ("Email app password", "present" if email_status.app_password_present else "missing"),
+                ("Event logging", "enabled" if log_status.enabled else "disabled"),
+                ("Stored events", str(log_status.event_count)),
                 ("Final unlock", "not implemented"),
             ],
             accent=ds.SAFEDESK_DEEP_RED,

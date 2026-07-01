@@ -10,6 +10,7 @@ from safedesk.gui.components.form_field import FormField
 from safedesk.gui.components.info_banner import InfoBanner
 from safedesk.gui.components.page_header import PageHeader
 from safedesk.gui.components.scrollable_page import ScrollablePage
+from safedesk.logging.event_logger import build_logger_from_config
 
 
 class OtpEmailSetupScreen(ctk.CTkFrame):
@@ -21,6 +22,7 @@ class OtpEmailSetupScreen(ctk.CTkFrame):
         self.config = context.load_result.config
         self.otp_config = self.config.get("otp", {})
         self.otp_manager = OtpManager(self.config)
+        self.event_logger = build_logger_from_config(self.config)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -202,6 +204,12 @@ class OtpEmailSetupScreen(ctk.CTkFrame):
             self.message_banner.set_message("OTP foundation is disabled in configuration.")
             return
         result = self.otp_manager.generate_otp()
+        self.event_logger.log_otp_event(
+            action="otp_generated",
+            status="success" if result.success else "failed",
+            message="OTP generated for manual foundation testing.",
+            metadata={"expires_seconds": result.expires_seconds},
+        )
         self.message_banner.set_message(f"{result.message} It expires in {result.expires_seconds} seconds.")
         self.refresh_status()
 
@@ -216,11 +224,25 @@ class OtpEmailSetupScreen(ctk.CTkFrame):
         result = sender.send_otp_email(self.otp_manager.session.code, self.otp_manager.session_status().expires_seconds_remaining)
         if result.success:
             self.otp_manager.record_send()
+        self.event_logger.log_event(
+            category="email",
+            action="send_otp_email",
+            status="success" if result.success else "failed",
+            severity="INFO" if result.success else "WARNING",
+            message=f"OTP email send completed with status: {result.status}.",
+            metadata={"result_status": result.status},
+        )
         self.message_banner.set_message(result.message)
         self.refresh_status()
 
     def verify_otp(self) -> None:
         result = self.otp_manager.verify_otp(self.verify_otp_input.get())
+        self.event_logger.log_otp_event(
+            action="otp_verification",
+            status=self._otp_event_status(result.success, result.status),
+            message=f"OTP verification completed with status: {result.status}.",
+            metadata={"result_status": result.status, "attempts_remaining": result.attempts_remaining},
+        )
         self.message_banner.set_message(
             f"{result.message} Attempts remaining: {result.attempts_remaining}."
             if result.status in {"failed", "attempts_exceeded"}
@@ -237,6 +259,14 @@ class OtpEmailSetupScreen(ctk.CTkFrame):
     def send_test_email(self) -> None:
         sender = EmailSender(self.config, self.context.env, self.context.settings)
         result = sender.send_test_email()
+        self.event_logger.log_event(
+            category="email",
+            action="send_test_email",
+            status="success" if result.success else "failed",
+            severity="INFO" if result.success else "WARNING",
+            message=f"Test email action completed with status: {result.status}.",
+            metadata={"result_status": result.status},
+        )
         self.message_banner.set_message(result.message)
         self.refresh_status()
 
@@ -257,3 +287,13 @@ class OtpEmailSetupScreen(ctk.CTkFrame):
             return "OTP generated. Real email is configured, so use Send OTP Email and check the receiver inbox."
 
         return f"Local demo OTP (foundation testing only): {otp_code}"
+
+    @staticmethod
+    def _otp_event_status(success: bool, result_status: str) -> str:
+        if success:
+            return "success"
+        if result_status in {"attempts_exceeded", "expired"}:
+            return "blocked"
+        if result_status == "not_generated":
+            return "skipped"
+        return "failed"
