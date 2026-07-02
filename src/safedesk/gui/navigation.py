@@ -12,6 +12,7 @@ AUTHENTICATION_SETUP = "authentication_setup"
 OTP_EMAIL_SETUP = "otp_email_setup"
 EVENT_LOGS = "event_logs"
 INTRUDER_DETECTION_DEMO = "intruder_detection_demo"
+THREAT_LEVEL_DEMO = "threat_level_demo"
 PROTECTED_MODE_PREVIEW = "protected_mode_preview"
 DASHBOARD = "dashboard"
 SETTINGS = "settings"
@@ -36,6 +37,7 @@ SCREEN_DEFINITIONS = (
     ScreenDefinition(OTP_EMAIL_SETUP, "OTP & Email Setup", "Manual OTP and email foundation."),
     ScreenDefinition(EVENT_LOGS, "Event Logs", "Local SQLite event log dashboard."),
     ScreenDefinition(INTRUDER_DETECTION_DEMO, "Intruder Detection Demo", "Manual unknown/unverified evidence capture foundation."),
+    ScreenDefinition(THREAT_LEVEL_DEMO, "Threat Level Demo", "Manual threat-level simulation foundation."),
     ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Preview", "Non-operational protected mode preview."),
     ScreenDefinition(DASHBOARD, "Dashboard", "Future intruder history and logs placeholder."),
     ScreenDefinition(SETTINGS, "Settings", "Future settings placeholder."),

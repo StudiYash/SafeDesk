@@ -34,6 +34,9 @@ SENSITIVE_METADATA_WORDS = (
     "path",
 )
 SAFE_METADATA_KEYS = {
+    "failed_otp_count",
+    "failed_panic_count",
+    "failed_password_count",
     "image_saved",
     "image_count",
 }

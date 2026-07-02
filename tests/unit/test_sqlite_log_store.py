@@ -122,3 +122,62 @@ def test_sqlite_store_migrates_legacy_schema_safely(tmp_path):
     assert result.success is True
     assert event.event_number == 1
     assert event.event_id == "legacy-id"
+
+
+def test_sqlite_store_clear_events_removes_rows_and_resets_count(tmp_path):
+    store = SQLiteLogStore(tmp_path / "safedesk.sqlite3")
+    store.add_event(SafeDeskEvent(category="app", action="one", status="info"))
+    store.add_event(SafeDeskEvent(category="app", action="two", status="info"))
+
+    result = store.clear_events()
+
+    assert result.success is True
+    assert result.deleted_count == 2
+    assert store.list_events() == []
+    assert store.count_events() == 0
+    assert store.build_status(enabled=True).event_count == 0
+    assert "safedesk.sqlite3" not in result.message
+
+
+def test_sqlite_store_clear_events_resets_event_numbering(tmp_path):
+    store = SQLiteLogStore(tmp_path / "safedesk.sqlite3")
+    store.add_event(SafeDeskEvent(category="app", action="before_clear", status="info"))
+    store.clear_events()
+
+    store.add_event(SafeDeskEvent(category="app", action="after_clear", status="info"))
+    [event] = store.list_events()
+
+    assert event.event_number == 1
+    assert event.action == "after_clear"
+
+
+def test_sqlite_store_clear_events_missing_database_is_safe(tmp_path):
+    db_path = tmp_path / "missing.sqlite3"
+    store = SQLiteLogStore(db_path)
+
+    result = store.clear_events()
+
+    assert result.success is True
+    assert result.deleted_count == 0
+    assert db_path.exists() is False
+    assert "missing.sqlite3" not in result.message
+
+
+def test_sqlite_store_clear_events_does_not_touch_other_runtime_files(tmp_path):
+    store = SQLiteLogStore(tmp_path / "logs" / "safedesk.sqlite3")
+    owner_sample = tmp_path / "data" / "owner" / "samples" / "owner_sample_keep.jpg"
+    intruder_image = tmp_path / "data" / "intruders" / "intruder_keep.jpg"
+    threat_state = tmp_path / "data" / "config" / "threat_state.json"
+    secret_file = tmp_path / "secrets.local.json"
+    for path in (owner_sample, intruder_image, threat_state, secret_file):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("keep", encoding="utf-8")
+    store.add_event(SafeDeskEvent(category="app", action="manual_test", status="info"))
+
+    result = store.clear_events()
+
+    assert result.success is True
+    assert owner_sample.read_text(encoding="utf-8") == "keep"
+    assert intruder_image.read_text(encoding="utf-8") == "keep"
+    assert threat_state.read_text(encoding="utf-8") == "keep"
+    assert secret_file.read_text(encoding="utf-8") == "keep"

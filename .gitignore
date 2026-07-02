@@ -54,6 +54,9 @@ data/cache/recognition/
 # Local intruder detection evidence data
 data/config/intruder_capture_manifest.json
 
+# Local threat foundation state
+data/config/threat_state.json
+
 # Databases and logs
 *.db
 *.sqlite

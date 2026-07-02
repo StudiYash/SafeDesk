@@ -240,9 +240,80 @@ def validate_config(
             )
         )
 
+    threat_levels = config.get("threat_levels", {})
+    for key in ("enabled", "foundation_enabled", "demo_only"):
+        if not isinstance(threat_levels.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_threat_levels_boolean",
+                    f"`threat_levels.{key}` must be a boolean.",
+                )
+            )
+
+    if threat_levels.get("enabled") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "threat_levels_enabled_must_remain_false",
+                "`threat_levels.enabled` must remain false until automatic threat handling is connected.",
+            )
+        )
+
+    if threat_levels.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "threat_levels_demo_only_required",
+                "`threat_levels.demo_only` must remain true in Phase 13.",
+            )
+        )
+
+    max_level = threat_levels.get("max_level")
+    if isinstance(max_level, bool) or not isinstance(max_level, int) or max_level <= 0:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_threat_levels_max_level",
+                "`threat_levels.max_level` must be a positive integer.",
+            )
+        )
+        max_level = 5
+    elif max_level != 5:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "threat_levels_max_level_required",
+                "`threat_levels.max_level` must remain 5 in Phase 13.",
+            )
+        )
+
+    initial_level = threat_levels.get("initial_level")
+    if isinstance(initial_level, bool) or not isinstance(initial_level, int) or not 0 <= initial_level <= int(max_level):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_threat_levels_initial_level",
+                "`threat_levels.initial_level` must be an integer from 0 to `threat_levels.max_level`.",
+            )
+        )
+
+    for key in (
+        "forceful_attempt_threshold",
+        "repeated_unknown_threshold",
+        "failed_password_threshold",
+        "failed_otp_threshold",
+        "forced_exit_threshold",
+    ):
+        issue = _positive_int_issue(config, ("threat_levels", key))
+        if issue:
+            issues.append(issue)
+
+    threat_state_path_issue = _relative_path_issue("threat_levels", "state_path", threat_levels.get("state_path"))
+    if threat_state_path_issue:
+        issues.append(threat_state_path_issue)
+
     for item in (
-        ("threat_levels", "max_level"),
-        ("threat_levels", "forceful_attempt_threshold"),
         ("shutdown", "shutdown_after_threat_level"),
         ("shutdown", "warning_seconds"),
         ("ui", "window_width"),

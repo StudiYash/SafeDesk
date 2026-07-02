@@ -116,9 +116,16 @@ DEFAULT_CONFIG = {
     },
     "threat_levels": {
         "enabled": False,
+        "foundation_enabled": True,
+        "demo_only": True,
         "initial_level": 0,
         "max_level": 5,
         "forceful_attempt_threshold": 3,
+        "repeated_unknown_threshold": 3,
+        "failed_password_threshold": 3,
+        "failed_otp_threshold": 3,
+        "forced_exit_threshold": 1,
+        "state_path": "data/config/threat_state.json",
     },
     "shutdown": {
         "real_shutdown_enabled": False,

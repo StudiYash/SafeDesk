@@ -26,6 +26,7 @@ def test_log_model_constants_include_phase_11_categories():
     assert "otp" in EVENT_CATEGORIES
     assert "email" in EVENT_CATEGORIES
     assert "intruder_detection" in EVENT_CATEGORIES
+    assert "threat_level" in EVENT_CATEGORIES
     assert "success" in EVENT_STATUSES
     assert "blocked" in EVENT_STATUSES
     assert "WARNING" in EVENT_SEVERITIES

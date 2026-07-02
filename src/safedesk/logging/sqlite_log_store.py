@@ -161,20 +161,31 @@ class SQLiteLogStore:
 
         return EventLogStatus(True, True, self.count_events(), "Local event log database is ready.")
 
-    def clear_events_for_demo(self) -> EventLogResult:
-        """Clear only the local events table for demo testing."""
+    def clear_events(self) -> EventLogResult:
+        """Clear only local SafeDesk event rows and reset event numbering."""
 
-        init_result = self.initialize()
-        if not init_result.success:
-            return init_result
+        if not self.database_path.exists():
+            return EventLogResult(True, "cleared", "No local event logs were present.", deleted_count=0)
 
         try:
             with sqlite3.connect(self.database_path) as connection:
+                if not self._events_table_exists(connection):
+                    return EventLogResult(True, "cleared", "No local event records were present.", deleted_count=0)
+                deleted_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
                 connection.execute("DELETE FROM events")
+                if self._events_table_exists(connection) and "sqlite_sequence" in self._sqlite_master_tables(connection):
+                    connection.execute("DELETE FROM sqlite_sequence WHERE name = ?", ("events",))
+                connection.commit()
+                connection.execute("VACUUM")
         except Exception:
-            return EventLogResult(False, "storage_error", "Demo event logs could not be cleared.")
+            return EventLogResult(False, "storage_error", "Local event logs could not be cleared.")
 
-        return EventLogResult(True, "cleared", "Demo event logs cleared.")
+        return EventLogResult(True, "cleared", "Local event logs cleared.", deleted_count=deleted_count)
+
+    def clear_events_for_demo(self) -> EventLogResult:
+        """Backward-compatible wrapper for clearing local demo event logs."""
+
+        return self.clear_events()
 
     @staticmethod
     def _event_from_row(row: tuple[Any, ...]) -> SafeDeskEvent:
@@ -207,6 +218,11 @@ class SQLiteLogStore:
     @staticmethod
     def _table_columns(connection: sqlite3.Connection) -> set[str]:
         return {str(row[1]) for row in connection.execute("PRAGMA table_info(events)").fetchall()}
+
+    @staticmethod
+    def _sqlite_master_tables(connection: sqlite3.Connection) -> set[str]:
+        rows = connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+        return {str(row[0]) for row in rows}
 
     @staticmethod
     def _create_schema(connection: sqlite3.Connection) -> None:

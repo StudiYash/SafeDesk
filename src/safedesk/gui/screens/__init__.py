@@ -14,6 +14,7 @@ from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePrev
 from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
 from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
 from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
+from safedesk.gui.screens.threat_level_demo_screen import ThreatLevelDemoScreen
 
 __all__ = [
     "AboutScreen",
@@ -30,4 +31,5 @@ __all__ = [
     "SettingsPlaceholderScreen",
     "SetupStatusScreen",
     "SetupWizardScreen",
+    "ThreatLevelDemoScreen",
 ]

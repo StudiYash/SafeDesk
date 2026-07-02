@@ -17,6 +17,7 @@ EVENT_CATEGORIES = (
     "otp",
     "email",
     "intruder_detection",
+    "threat_level",
     "system",
 )
 
@@ -55,6 +56,7 @@ class EventLogResult:
     status: str
     message: str
     event_id: str = ""
+    deleted_count: int = 0
 
 
 @dataclass(frozen=True)

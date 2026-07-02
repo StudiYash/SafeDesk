@@ -22,6 +22,7 @@ from safedesk.gui.navigation import (
     SETUP_STATUS,
     SETUP_WIZARD,
     SETTINGS,
+    THREAT_LEVEL_DEMO,
 )
 
 
@@ -37,6 +38,7 @@ def test_navigation_metadata_contains_expected_screens():
         OTP_EMAIL_SETUP,
         EVENT_LOGS,
         INTRUDER_DETECTION_DEMO,
+        THREAT_LEVEL_DEMO,
         PROTECTED_MODE_PREVIEW,
         DASHBOARD,
         SETTINGS,

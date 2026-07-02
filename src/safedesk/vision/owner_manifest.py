@@ -14,6 +14,45 @@ def is_valid_owner_sample_file(path: Path) -> bool:
     return path.is_file() and path.name.startswith("owner_sample_") and path.suffix.lower() in VALID_SAMPLE_SUFFIXES
 
 
+def _existing_manifest_sample_path(samples_dir: Path, sample_file: str) -> Path | None:
+    raw_path = Path(str(sample_file))
+    candidate = raw_path if raw_path.is_absolute() else samples_dir / raw_path
+    try:
+        resolved_samples_dir = samples_dir.resolve()
+        resolved_candidate = candidate.resolve()
+    except Exception:
+        return None
+
+    if resolved_candidate.parent != resolved_samples_dir:
+        return None
+    if not is_valid_owner_sample_file(resolved_candidate):
+        return None
+    return resolved_candidate
+
+
+def discover_existing_owner_sample_files(samples_dir: Path, manifest: OwnerRegistrationManifest | None = None) -> tuple[Path, ...]:
+    """Return valid existing owner sample files without trusting stale manifest counts."""
+
+    if not samples_dir.exists():
+        return ()
+
+    sample_paths: set[Path] = set()
+    for path in samples_dir.iterdir():
+        if is_valid_owner_sample_file(path):
+            try:
+                sample_paths.add(path.resolve())
+            except Exception:
+                sample_paths.add(path)
+
+    if manifest is not None:
+        for sample_file in manifest.sample_files:
+            existing_path = _existing_manifest_sample_path(samples_dir, sample_file)
+            if existing_path is not None:
+                sample_paths.add(existing_path)
+
+    return tuple(sorted(sample_paths, key=lambda path: path.name.lower()))
+
+
 @dataclass(frozen=True)
 class OwnerRegistrationManifest:
     registration_version: int = 1
@@ -93,10 +132,7 @@ def build_registration_status(
 ) -> OwnerRegistrationStatus:
     manifest_exists = manifest_path.exists()
     manifest = load_owner_manifest(manifest_path) if manifest_exists else OwnerRegistrationManifest(required_sample_count=required_samples)
-    sample_count = manifest.sample_count
-    if samples_dir.exists():
-        sample_files_on_disk = [path for path in samples_dir.iterdir() if is_valid_owner_sample_file(path)]
-        sample_count = max(sample_count, len(sample_files_on_disk))
+    sample_count = len(discover_existing_owner_sample_files(samples_dir, manifest))
 
     return OwnerRegistrationStatus(
         registration_complete=sample_count >= required_samples,

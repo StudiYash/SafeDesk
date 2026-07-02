@@ -39,6 +39,7 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         self.source_var = ctk.StringVar(value=ALL_FILTER)
         self.sort_field_var = ctk.StringVar(value="Event Number")
         self.sort_direction_var = ctk.StringVar(value="Ascending")
+        self.clear_logs_confirmation_pending = False
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -69,7 +70,7 @@ class LoggingDashboardScreen(ctk.CTkFrame):
 
         actions = ctk.CTkFrame(self.page, **ds.card_kwargs())
         actions.grid(row=4, column=0, sticky="ew", padx=4, pady=6)
-        for column in (0, 1):
+        for column in (0, 1, 2):
             actions.grid_columnconfigure(column, weight=1, uniform="log_actions")
         ctk.CTkButton(
             actions,
@@ -79,10 +80,16 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         ).grid(row=0, column=0, sticky="ew", padx=(ds.SPACE_LG, ds.SPACE_SM), pady=ds.SPACE_MD)
         ctk.CTkButton(
             actions,
+            text="Clear Logs",
+            command=self.clear_logs,
+            **ds.secondary_button_kwargs(),
+        ).grid(row=0, column=1, sticky="ew", padx=ds.SPACE_SM, pady=ds.SPACE_MD)
+        ctk.CTkButton(
+            actions,
             text="Create Test Log Event",
             command=self.create_test_log_event,
             **ds.primary_button_kwargs(),
-        ).grid(row=0, column=1, sticky="ew", padx=(ds.SPACE_SM, ds.SPACE_LG), pady=ds.SPACE_MD)
+        ).grid(row=0, column=2, sticky="ew", padx=(ds.SPACE_SM, ds.SPACE_LG), pady=ds.SPACE_MD)
 
         self.message_banner = InfoBanner(self.page, "Ready to review local foundation logs.", kind="neutral", compact=True)
         self.message_banner.grid(row=5, column=0, sticky="ew", padx=4, pady=(6, 10))
@@ -200,7 +207,10 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         self.sort_direction_var.set("Ascending")
         self.refresh_logs()
 
-    def refresh_logs(self) -> None:
+    def refresh_logs(self, reset_clear_confirmation: bool = True) -> None:
+        if reset_clear_confirmation:
+            self.clear_logs_confirmation_pending = False
+
         for child in self.status_container.winfo_children():
             child.destroy()
         for child in self.events_frame.winfo_children():
@@ -287,6 +297,7 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             variable.set(ALL_FILTER)
 
     def create_test_log_event(self) -> None:
+        self.clear_logs_confirmation_pending = False
         result = self.logger.log_app_event(
             action="manual_test_event",
             status="info",
@@ -295,3 +306,23 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         )
         self.message_banner.set_message(result.message)
         self.refresh_logs()
+
+    def clear_logs(self) -> None:
+        if not self.clear_logs_confirmation_pending:
+            self.clear_logs_confirmation_pending = True
+            self.message_banner.set_message("Press Clear Logs again to confirm. This will delete local event records only.")
+            return
+
+        self.clear_logs_confirmation_pending = False
+        result = self.logger.store.clear_events()
+        if result.success:
+            self.search_var.set("")
+            self.category_var.set(ALL_FILTER)
+            self.status_var.set(ALL_FILTER)
+            self.severity_var.set(ALL_FILTER)
+            self.action_var.set(ALL_FILTER)
+            self.source_var.set(ALL_FILTER)
+            self.sort_field_var.set("Event Number")
+            self.sort_direction_var.set("Ascending")
+            self.refresh_logs(reset_clear_confirmation=False)
+        self.message_banner.set_message(result.message)

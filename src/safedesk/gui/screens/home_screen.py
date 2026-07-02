@@ -14,6 +14,7 @@ from safedesk.gui.components.status_card import StatusCard
 from safedesk.intruders.intruder_manifest import build_intruder_capture_status
 from safedesk.logging.event_logger import build_logger_from_config
 from safedesk.storage.paths import project_root
+from safedesk.threats import ThreatManager
 from safedesk.vision.owner_manifest import build_registration_status
 
 
@@ -46,6 +47,9 @@ class HomeScreen(ctk.CTkFrame):
         log_status = build_logger_from_config(context.load_result.config).store.build_status(
             enabled=context.load_result.config.get("logging", {}).get("enabled", True)
         )
+        threat_manager = ThreatManager(context.load_result.config)
+        threat_state = threat_manager.load_state()
+        threat_config = context.load_result.config.get("threat_levels", {})
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -104,6 +108,11 @@ class HomeScreen(ctk.CTkFrame):
                 ("Intruder detection", "available" if intruder_status.enabled else "disabled"),
                 ("Intruder evidence", f"{intruder_status.image_count} saved locally"),
                 ("Intruder mode", "demo / foundation only" if intruder_status.demo_only else "review required"),
+                ("Threat foundation", "available" if threat_config.get("foundation_enabled", True) else "disabled"),
+                ("Threat mode", "demo / foundation only" if threat_config.get("demo_only", True) else "review required"),
+                ("Current threat level", str(threat_state.current_level)),
+                ("Highest threat level", str(threat_state.highest_level)),
+                ("Shutdown candidate", "yes / no shutdown performed" if threat_state.current_level >= 5 else "no"),
             ],
             accent=ds.SAFEDESK_ALERT,
         ).grid(row=3, column=0, sticky="nsew", padx=(4, 8), pady=6)

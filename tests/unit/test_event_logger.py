@@ -28,6 +28,7 @@ def _config_for(db_path: Path, enabled: bool = True) -> dict:
 def test_sanitize_metadata_redacts_sensitive_keys():
     metadata = {
         "password": "secret",
+        "password_value": "secret",
         "panic_code": "111111",
         "otp_code": "123456",
         "email_app_password": "app-secret",
@@ -37,6 +38,9 @@ def test_sanitize_metadata_redacts_sensitive_keys():
         "image_path": "private-image.jpg",
         "image_saved": True,
         "image_count": 2,
+        "failed_password_count": 2,
+        "failed_otp_count": 1,
+        "failed_panic_count": 1,
         "face_embedding": [1, 2, 3],
         "attempts": 1,
     }
@@ -45,6 +49,7 @@ def test_sanitize_metadata_redacts_sensitive_keys():
 
     for key in (
         "password",
+        "password_value",
         "panic_code",
         "otp_code",
         "email_app_password",
@@ -58,6 +63,9 @@ def test_sanitize_metadata_redacts_sensitive_keys():
     assert sanitized["attempts"] == 1
     assert sanitized["image_saved"] is True
     assert sanitized["image_count"] == 2
+    assert sanitized["failed_password_count"] == 2
+    assert sanitized["failed_otp_count"] == 1
+    assert sanitized["failed_panic_count"] == 1
 
 
 def test_event_logger_writes_sanitized_event_to_temp_database(tmp_path):
