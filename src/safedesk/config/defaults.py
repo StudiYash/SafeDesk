@@ -71,6 +71,17 @@ DEFAULT_CONFIG = {
         "camera_index": 0,
         "demo_only": True,
     },
+    "intruder_detection": {
+        "enabled": True,
+        "demo_only": True,
+        "camera_index": 0,
+        "intruder_images_dir": "data/intruders",
+        "manifest_path": "data/config/intruder_capture_manifest.json",
+        "image_format": "jpg",
+        "image_quality": 90,
+        "minimum_owner_samples_required": 5,
+        "capture_unknown_only": True,
+    },
     "authentication": {
         "password_fallback_enabled": False,
         "panic_code_enabled": False,

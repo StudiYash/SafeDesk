@@ -33,6 +33,10 @@ SENSITIVE_METADATA_WORDS = (
     "face",
     "path",
 )
+SAFE_METADATA_KEYS = {
+    "image_saved",
+    "image_count",
+}
 
 MAX_STRING_LENGTH = 300
 MAX_DICT_ITEMS = 50
@@ -57,6 +61,8 @@ def sanitize_metadata(metadata: dict | None) -> dict:
 
 def _is_sensitive_key(key: str) -> bool:
     normalized = key.lower()
+    if normalized in SAFE_METADATA_KEYS:
+        return False
     return any(word in normalized for word in SENSITIVE_METADATA_WORDS)
 
 

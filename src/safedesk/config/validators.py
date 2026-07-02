@@ -26,6 +26,7 @@ SUPPORTED_RECOGNITION_METRICS = ("cosine", "euclidean", "euclidean_l2")
 SUPPORTED_AUTH_HASH_ALGORITHMS = ("pbkdf2_sha256",)
 SUPPORTED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 SUPPORTED_LOG_DB_SUFFIXES = (".sqlite", ".sqlite3", ".db")
+SUPPORTED_INTRUDER_IMAGE_FORMATS = ("jpg", "png")
 
 
 def is_basic_email(value: str) -> bool:
@@ -107,6 +108,22 @@ def _number_range_issue(
             "error",
             "invalid_number_range",
             f"`{section}.{key}` must be a number between {minimum} and {maximum}.",
+        )
+    return None
+
+
+def _relative_path_issue(section: str, key: str, value: Any) -> ConfigValidationIssue | None:
+    if not isinstance(value, str) or not value.strip():
+        return ConfigValidationIssue(
+            "error",
+            "invalid_relative_path",
+            f"`{section}.{key}` must be a non-empty relative path.",
+        )
+    if Path(value).is_absolute():
+        return ConfigValidationIssue(
+            "error",
+            "absolute_relative_path",
+            f"`{section}.{key}` must remain relative to the SafeDesk project root.",
         )
     return None
 
@@ -660,6 +677,73 @@ def validate_config(
                 "`liveness.camera_index` must be zero or a positive integer.",
             )
         )
+
+    intruder_detection = config.get("intruder_detection", {})
+    for key in ("enabled", "demo_only", "capture_unknown_only"):
+        if not isinstance(intruder_detection.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_intruder_detection_boolean",
+                    f"`intruder_detection.{key}` must be a boolean.",
+                )
+            )
+
+    if intruder_detection.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "intruder_detection_demo_only_required",
+                "`intruder_detection.demo_only` must remain true in Phase 12.",
+            )
+        )
+
+    if intruder_detection.get("capture_unknown_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "intruder_capture_unknown_only_required",
+                "`intruder_detection.capture_unknown_only` must remain true in Phase 12.",
+            )
+        )
+
+    intruder_camera_index = intruder_detection.get("camera_index")
+    if isinstance(intruder_camera_index, bool) or not isinstance(intruder_camera_index, int) or intruder_camera_index < 0:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_intruder_detection_camera_index",
+                "`intruder_detection.camera_index` must be zero or a positive integer.",
+            )
+        )
+
+    for key in ("intruder_images_dir", "manifest_path"):
+        issue = _relative_path_issue("intruder_detection", key, intruder_detection.get(key))
+        if issue:
+            issues.append(issue)
+
+    if intruder_detection.get("image_format") not in SUPPORTED_INTRUDER_IMAGE_FORMATS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_intruder_detection_image_format",
+                "`intruder_detection.image_format` must be jpg or png.",
+            )
+        )
+
+    image_quality = intruder_detection.get("image_quality")
+    if isinstance(image_quality, bool) or not isinstance(image_quality, int) or not 1 <= image_quality <= 100:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_intruder_detection_image_quality",
+                "`intruder_detection.image_quality` must be an integer between 1 and 100.",
+            )
+        )
+
+    minimum_owner_samples_issue = _positive_int_issue(config, ("intruder_detection", "minimum_owner_samples_required"))
+    if minimum_owner_samples_issue:
+        issues.append(minimum_owner_samples_issue)
 
     real_email, real_shutdown, real_lockdown = _effective_flags(config, env)
     demo_safe_mode = bool(app.get("demo_safe_mode", True)) or security_mode == "demo_safe"

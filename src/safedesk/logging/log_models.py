@@ -16,6 +16,7 @@ EVENT_CATEGORIES = (
     "authentication",
     "otp",
     "email",
+    "intruder_detection",
     "system",
 )
 

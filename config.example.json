@@ -66,6 +66,17 @@
     "camera_index": 0,
     "demo_only": true
   },
+  "intruder_detection": {
+    "enabled": true,
+    "demo_only": true,
+    "camera_index": 0,
+    "intruder_images_dir": "data/intruders",
+    "manifest_path": "data/config/intruder_capture_manifest.json",
+    "image_format": "jpg",
+    "image_quality": 90,
+    "minimum_owner_samples_required": 5,
+    "capture_unknown_only": true
+  },
   "authentication": {
     "password_fallback_enabled": false,
     "panic_code_enabled": false,

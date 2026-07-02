@@ -35,6 +35,8 @@ def test_sanitize_metadata_redacts_sensitive_keys():
         "hash": "hash-value",
         "salt": "salt-value",
         "image_path": "private-image.jpg",
+        "image_saved": True,
+        "image_count": 2,
         "face_embedding": [1, 2, 3],
         "attempts": 1,
     }
@@ -54,6 +56,8 @@ def test_sanitize_metadata_redacts_sensitive_keys():
     ):
         assert sanitized[key] == "[REDACTED]"
     assert sanitized["attempts"] == 1
+    assert sanitized["image_saved"] is True
+    assert sanitized["image_count"] == 2
 
 
 def test_event_logger_writes_sanitized_event_to_temp_database(tmp_path):

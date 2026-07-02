@@ -11,6 +11,7 @@ from safedesk.gui.components.info_banner import InfoBanner
 from safedesk.gui.components.page_header import PageHeader
 from safedesk.gui.components.scrollable_page import ScrollablePage
 from safedesk.gui.components.status_card import StatusCard
+from safedesk.intruders.intruder_manifest import build_intruder_capture_status
 from safedesk.logging.event_logger import build_logger_from_config
 from safedesk.storage.paths import project_root
 from safedesk.vision.owner_manifest import build_registration_status
@@ -32,6 +33,13 @@ class HomeScreen(ctk.CTkFrame):
         recognition_required = int(recognition_config.get("minimum_samples_required", 5))
         recognition_ready = registration_status.sample_count >= recognition_required
         liveness_config = context.load_result.config.get("liveness", {})
+        intruder_config = context.load_result.config.get("intruder_detection", {})
+        intruder_status = build_intruder_capture_status(
+            project_root() / intruder_config.get("intruder_images_dir", "data/intruders"),
+            project_root() / intruder_config.get("manifest_path", "data/config/intruder_capture_manifest.json"),
+            enabled=intruder_config.get("enabled", True),
+            demo_only=intruder_config.get("demo_only", True),
+        )
         auth_status = AuthenticationService(context.load_result.config).build_status()
         otp_config = context.load_result.config.get("otp", {})
         email_status = build_email_settings_status(context.env, context.load_result.config, context.settings)
@@ -93,6 +101,9 @@ class HomeScreen(ctk.CTkFrame):
                 ("Recognition model", str(recognition_config.get("model_name", "ArcFace"))),
                 ("Liveness demo", "available" if liveness_config.get("enabled", True) else "disabled"),
                 ("Liveness mode", "demo only" if liveness_config.get("demo_only", True) else "review required"),
+                ("Intruder detection", "available" if intruder_status.enabled else "disabled"),
+                ("Intruder evidence", f"{intruder_status.image_count} saved locally"),
+                ("Intruder mode", "demo / foundation only" if intruder_status.demo_only else "review required"),
             ],
             accent=ds.SAFEDESK_ALERT,
         ).grid(row=3, column=0, sticky="nsew", padx=(4, 8), pady=6)

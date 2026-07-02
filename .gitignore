@@ -51,6 +51,9 @@ data/config/owner_recognition_profile.json
 data/cache/deepface/
 data/cache/recognition/
 
+# Local intruder detection evidence data
+data/config/intruder_capture_manifest.json
+
 # Databases and logs
 *.db
 *.sqlite
