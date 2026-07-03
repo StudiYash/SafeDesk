@@ -18,6 +18,7 @@ EVENT_CATEGORIES = (
     "email",
     "intruder_detection",
     "threat_level",
+    "protected_mode",
     "system",
 )
 

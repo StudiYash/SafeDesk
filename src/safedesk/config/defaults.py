@@ -127,6 +127,18 @@ DEFAULT_CONFIG = {
         "forced_exit_threshold": 1,
         "state_path": "data/config/threat_state.json",
     },
+    "protected_mode": {
+        "enabled": False,
+        "foundation_enabled": True,
+        "demo_only": True,
+        "state_path": "data/config/protected_mode_state.json",
+        "allow_manual_arm": True,
+        "allow_manual_activation": True,
+        "allow_manual_recovery": True,
+        "link_threat_level_demo": True,
+        "activation_candidate_threat_level": 4,
+        "shutdown_candidate_threat_level": 5,
+    },
     "shutdown": {
         "real_shutdown_enabled": False,
         "demo_shutdown_only": True,

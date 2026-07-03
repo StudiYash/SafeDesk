@@ -38,7 +38,7 @@ SCREEN_DEFINITIONS = (
     ScreenDefinition(EVENT_LOGS, "Event Logs", "Local SQLite event log dashboard."),
     ScreenDefinition(INTRUDER_DETECTION_DEMO, "Intruder Detection Demo", "Manual unknown/unverified evidence capture foundation."),
     ScreenDefinition(THREAT_LEVEL_DEMO, "Threat Level Demo", "Manual threat-level simulation foundation."),
-    ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Preview", "Non-operational protected mode preview."),
+    ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Mode Demo", "Safe protected-mode foundation simulator."),
     ScreenDefinition(DASHBOARD, "Dashboard", "Future intruder history and logs placeholder."),
     ScreenDefinition(SETTINGS, "Settings", "Future settings placeholder."),
     ScreenDefinition(ABOUT, "About", "Project information."),

@@ -122,6 +122,18 @@
     "forced_exit_threshold": 1,
     "state_path": "data/config/threat_state.json"
   },
+  "protected_mode": {
+    "enabled": false,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "state_path": "data/config/protected_mode_state.json",
+    "allow_manual_arm": true,
+    "allow_manual_activation": true,
+    "allow_manual_recovery": true,
+    "link_threat_level_demo": true,
+    "activation_candidate_threat_level": 4,
+    "shutdown_candidate_threat_level": 5
+  },
   "shutdown": {
     "real_shutdown_enabled": false,
     "demo_shutdown_only": true,

@@ -313,6 +313,77 @@ def validate_config(
     if threat_state_path_issue:
         issues.append(threat_state_path_issue)
 
+    protected_mode = config.get("protected_mode", {})
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "allow_manual_arm",
+        "allow_manual_activation",
+        "allow_manual_recovery",
+        "link_threat_level_demo",
+    ):
+        if not isinstance(protected_mode.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_protected_mode_boolean",
+                    f"`protected_mode.{key}` must be a boolean.",
+                )
+            )
+
+    if protected_mode.get("enabled") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "protected_mode_enabled_must_remain_false",
+                "`protected_mode.enabled` must remain false until real protected enforcement is connected.",
+            )
+        )
+
+    if protected_mode.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "protected_mode_demo_only_required",
+                "`protected_mode.demo_only` must remain true in Phase 14.",
+            )
+        )
+
+    protected_state_path_issue = _relative_path_issue("protected_mode", "state_path", protected_mode.get("state_path"))
+    if protected_state_path_issue:
+        issues.append(protected_state_path_issue)
+
+    protected_activation_level = protected_mode.get("activation_candidate_threat_level")
+    protected_shutdown_level = protected_mode.get("shutdown_candidate_threat_level")
+    for key, value in (
+        ("activation_candidate_threat_level", protected_activation_level),
+        ("shutdown_candidate_threat_level", protected_shutdown_level),
+    ):
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 5:
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_protected_mode_candidate_level",
+                    f"`protected_mode.{key}` must be an integer from 0 to 5.",
+                )
+            )
+
+    if (
+        isinstance(protected_activation_level, int)
+        and not isinstance(protected_activation_level, bool)
+        and isinstance(protected_shutdown_level, int)
+        and not isinstance(protected_shutdown_level, bool)
+        and protected_shutdown_level < protected_activation_level
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "protected_mode_candidate_order_invalid",
+                "`protected_mode.shutdown_candidate_threat_level` must be greater than or equal to `protected_mode.activation_candidate_threat_level`.",
+            )
+        )
+
     for item in (
         ("shutdown", "shutdown_after_threat_level"),
         ("shutdown", "warning_seconds"),

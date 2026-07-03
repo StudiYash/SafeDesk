@@ -57,6 +57,9 @@ data/config/intruder_capture_manifest.json
 # Local threat foundation state
 data/config/threat_state.json
 
+# Local protected-mode foundation state
+data/config/protected_mode_state.json
+
 # Databases and logs
 *.db
 *.sqlite

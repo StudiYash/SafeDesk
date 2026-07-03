@@ -13,6 +13,7 @@ from safedesk.gui.components.scrollable_page import ScrollablePage
 from safedesk.gui.components.status_card import StatusCard
 from safedesk.intruders.intruder_manifest import build_intruder_capture_status
 from safedesk.logging.event_logger import build_logger_from_config
+from safedesk.protected_mode import ProtectedModeManager
 from safedesk.storage.paths import project_root
 from safedesk.threats import ThreatManager
 from safedesk.vision.owner_manifest import build_registration_status
@@ -47,6 +48,7 @@ class SetupStatusScreen(ctk.CTkFrame):
         threat_manager = ThreatManager(context.load_result.config)
         threat_state = threat_manager.load_state()
         threat_config = context.load_result.config.get("threat_levels", {})
+        protected_status = ProtectedModeManager(context.load_result.config).build_status()
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -129,8 +131,14 @@ class SetupStatusScreen(ctk.CTkFrame):
                 ("Email app password", "present" if email_status.app_password_present else "missing"),
                 ("Event logging", "enabled" if log_status.enabled else "disabled"),
                 ("Stored events", str(log_status.event_count)),
+                ("Protected foundation", "available" if protected_status.foundation_enabled else "disabled"),
+                ("Protected mode", protected_status.state.mode),
+                ("Protected demo active", "yes" if protected_status.state.active_demo else "no"),
+                ("Recovery required", "yes" if protected_status.state.recovery_required else "no"),
+                ("Shutdown candidate", "yes / no shutdown performed" if protected_status.state.shutdown_candidate else "no"),
+                ("Lockdown performed", "no"),
+                ("Shutdown performed", "no"),
                 ("Final unlock", "not implemented"),
-                ("Protected mode", "not active"),
             ],
             accent=ds.TEXT_MUTED,
         ).grid(row=3, column=1, sticky="nsew", padx=(8, 4), pady=6)
