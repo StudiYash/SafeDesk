@@ -14,6 +14,7 @@ from safedesk.gui.components.status_card import StatusCard
 from safedesk.intruders.intruder_manifest import build_intruder_capture_status
 from safedesk.logging.event_logger import build_logger_from_config
 from safedesk.protected_mode import ProtectedModeManager
+from safedesk.shutdown_escalation import ShutdownEscalationManager
 from safedesk.storage.paths import project_root
 from safedesk.threats import ThreatManager
 from safedesk.vision.owner_manifest import build_registration_status
@@ -52,6 +53,7 @@ class HomeScreen(ctk.CTkFrame):
         threat_state = threat_manager.load_state()
         threat_config = context.load_result.config.get("threat_levels", {})
         protected_status = ProtectedModeManager(context.load_result.config).build_status()
+        shutdown_status = ShutdownEscalationManager(context.load_result.config).build_status()
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -139,6 +141,15 @@ class HomeScreen(ctk.CTkFrame):
                 ("Protected demo active", "yes" if protected_status.state.active_demo else "no"),
                 ("Recovery required", "yes" if protected_status.state.recovery_required else "no"),
                 ("Shutdown candidate", "yes / no shutdown performed" if protected_status.state.shutdown_candidate else "no"),
+                ("Shutdown foundation", "available" if shutdown_status.foundation_enabled else "disabled"),
+                ("Shutdown dry-run mode", shutdown_status.state.mode),
+                ("Dry-run countdown", "running" if shutdown_status.state.countdown_running else "not running"),
+                ("Shutdown dry-run candidate", "yes / no shutdown performed" if shutdown_status.state.shutdown_candidate else "no"),
+                ("Guarded real shutdown", "ready" if shutdown_status.guarded_real_shutdown_ready else "blocked / disabled"),
+                ("Real shutdown command", "enabled" if shutdown_status.real_shutdown_command_enabled else "disabled by default"),
+                ("Real shutdown scheduled", "yes" if shutdown_status.state.real_shutdown_scheduled else "no"),
+                ("Abort available", "yes" if context.load_result.config.get("shutdown", {}).get("allow_abort_real_shutdown", True) else "no"),
+                ("Automatic trigger", "not connected"),
                 ("Lockdown performed", "no"),
                 ("Shutdown performed", "no"),
                 ("Final unlock", "not implemented"),

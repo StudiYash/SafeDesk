@@ -137,6 +137,7 @@ def _effective_flags(config: dict[str, Any], env: EnvironmentSettings) -> tuple[
     real_shutdown = (
         bool(feature_flags.get("enable_real_shutdown", False))
         or bool(shutdown.get("real_shutdown_enabled", False))
+        or bool(shutdown.get("real_shutdown_command_enabled", False))
         or env.enable_real_shutdown
     )
     real_lockdown = (
@@ -384,9 +385,156 @@ def validate_config(
             )
         )
 
+    shutdown = config.get("shutdown", {})
+    for key in (
+        "foundation_enabled",
+        "real_shutdown_enabled",
+        "demo_shutdown_only",
+        "real_shutdown_command_enabled",
+        "allow_demo_countdown",
+        "allow_cancel",
+        "allow_recovery_cancel",
+        "require_manual_confirmation",
+        "link_threat_level_demo",
+        "link_protected_mode_demo",
+        "allow_guarded_real_shutdown",
+        "allow_abort_real_shutdown",
+        "real_shutdown_requires_confirmation_phrase",
+    ):
+        if not isinstance(shutdown.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_shutdown_boolean",
+                    f"`shutdown.{key}` must be a boolean.",
+                )
+            )
+
+    shutdown_supported_platforms = shutdown.get("real_shutdown_supported_platforms")
+    if not isinstance(shutdown_supported_platforms, list) or not shutdown_supported_platforms:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_shutdown_supported_platforms",
+                "`shutdown.real_shutdown_supported_platforms` must be a non-empty list of strings.",
+            )
+        )
+    elif any(not isinstance(platform, str) or not platform.strip() for platform in shutdown_supported_platforms):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_shutdown_supported_platforms",
+                "`shutdown.real_shutdown_supported_platforms` must contain only non-empty strings.",
+            )
+        )
+    elif any(platform != "Windows" for platform in shutdown_supported_platforms):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_shutdown_platform",
+                "`shutdown.real_shutdown_supported_platforms` may only include Windows in Phase 15.",
+            )
+        )
+
+    shutdown_state_path_issue = _relative_path_issue("shutdown", "state_path", shutdown.get("state_path"))
+    if shutdown_state_path_issue:
+        issues.append(shutdown_state_path_issue)
+
+    shutdown_after_threat_level = shutdown.get("shutdown_after_threat_level")
+    if (
+        isinstance(shutdown_after_threat_level, bool)
+        or not isinstance(shutdown_after_threat_level, int)
+        or not 0 <= shutdown_after_threat_level <= 5
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_shutdown_after_threat_level",
+                "`shutdown.shutdown_after_threat_level` must be an integer from 0 to 5.",
+            )
+        )
+
+    for key in ("warning_seconds", "countdown_seconds", "real_shutdown_countdown_seconds"):
+        issue = _positive_int_issue(config, ("shutdown", key))
+        if issue:
+            issues.append(issue)
+
+    real_shutdown_countdown_seconds = shutdown.get("real_shutdown_countdown_seconds")
+    if (
+        isinstance(real_shutdown_countdown_seconds, int)
+        and not isinstance(real_shutdown_countdown_seconds, bool)
+        and real_shutdown_countdown_seconds < 30
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "shutdown_real_countdown_too_short",
+                "`shutdown.real_shutdown_countdown_seconds` must be at least 30.",
+            )
+        )
+
+    shutdown_confirmation_phrase = shutdown.get("real_shutdown_confirmation_phrase")
+    if not isinstance(shutdown_confirmation_phrase, str) or not shutdown_confirmation_phrase.strip():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_shutdown_confirmation_phrase",
+                "`shutdown.real_shutdown_confirmation_phrase` must be a non-empty string.",
+            )
+        )
+
+    real_guard_flags = {
+        "feature_flags.enable_real_shutdown": config.get("feature_flags", {}).get("enable_real_shutdown", False) is True,
+        "shutdown.allow_guarded_real_shutdown": shutdown.get("allow_guarded_real_shutdown") is True,
+        "shutdown.real_shutdown_enabled": shutdown.get("real_shutdown_enabled") is True,
+        "shutdown.real_shutdown_command_enabled": shutdown.get("real_shutdown_command_enabled") is True,
+        "shutdown.demo_shutdown_only_disabled": shutdown.get("demo_shutdown_only") is False,
+        "app.demo_safe_mode_disabled": app.get("demo_safe_mode") is False,
+        "security_mode.not_demo_safe": security_mode != "demo_safe",
+        "shutdown.require_manual_confirmation": shutdown.get("require_manual_confirmation") is True,
+        "shutdown.real_shutdown_requires_confirmation_phrase": shutdown.get("real_shutdown_requires_confirmation_phrase") is True,
+        "shutdown.confirmation_phrase_configured": isinstance(shutdown_confirmation_phrase, str) and bool(shutdown_confirmation_phrase.strip()),
+        "shutdown.real_shutdown_countdown_at_least_30": isinstance(real_shutdown_countdown_seconds, int)
+        and not isinstance(real_shutdown_countdown_seconds, bool)
+        and real_shutdown_countdown_seconds >= 30,
+        "shutdown.allow_abort_real_shutdown": shutdown.get("allow_abort_real_shutdown") is True,
+    }
+    hard_real_flags = (
+        shutdown.get("allow_guarded_real_shutdown") is True
+        or shutdown.get("real_shutdown_enabled") is True
+        or shutdown.get("real_shutdown_command_enabled") is True
+        or shutdown.get("demo_shutdown_only") is False
+        or config.get("feature_flags", {}).get("enable_real_shutdown") is True
+    )
+    if hard_real_flags and app.get("demo_safe_mode") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "shutdown_demo_safe_mode_conflict",
+                "Demo/safe mode cannot run with guarded real shutdown flags enabled.",
+            )
+        )
+    if (shutdown.get("real_shutdown_enabled") is True or shutdown.get("real_shutdown_command_enabled") is True) and (
+        config.get("feature_flags", {}).get("enable_real_shutdown") is not True
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "shutdown_feature_flag_required",
+                "`feature_flags.enable_real_shutdown` must be true before real shutdown flags can be enabled.",
+            )
+        )
+    if hard_real_flags and not all(real_guard_flags.values()):
+        missing = ", ".join(key for key, enabled in real_guard_flags.items() if not enabled)
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "incomplete_real_shutdown_guards",
+                f"Guarded real shutdown requires all safety guards before validation can pass. Missing: {missing}.",
+            )
+        )
+
     for item in (
-        ("shutdown", "shutdown_after_threat_level"),
-        ("shutdown", "warning_seconds"),
         ("ui", "window_width"),
         ("ui", "window_height"),
         ("ui", "minimum_width"),

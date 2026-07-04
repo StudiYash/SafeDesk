@@ -19,6 +19,7 @@ EVENT_CATEGORIES = (
     "intruder_detection",
     "threat_level",
     "protected_mode",
+    "shutdown_escalation",
     "system",
 )
 

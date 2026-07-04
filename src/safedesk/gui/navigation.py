@@ -14,6 +14,7 @@ EVENT_LOGS = "event_logs"
 INTRUDER_DETECTION_DEMO = "intruder_detection_demo"
 THREAT_LEVEL_DEMO = "threat_level_demo"
 PROTECTED_MODE_PREVIEW = "protected_mode_preview"
+SHUTDOWN_ESCALATION = "shutdown_escalation"
 DASHBOARD = "dashboard"
 SETTINGS = "settings"
 ABOUT = "about"
@@ -39,6 +40,7 @@ SCREEN_DEFINITIONS = (
     ScreenDefinition(INTRUDER_DETECTION_DEMO, "Intruder Detection Demo", "Manual unknown/unverified evidence capture foundation."),
     ScreenDefinition(THREAT_LEVEL_DEMO, "Threat Level Demo", "Manual threat-level simulation foundation."),
     ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Mode Demo", "Safe protected-mode foundation simulator."),
+    ScreenDefinition(SHUTDOWN_ESCALATION, "Shutdown Escalation Demo", "Dry-run shutdown escalation foundation."),
     ScreenDefinition(DASHBOARD, "Dashboard", "Future intruder history and logs placeholder."),
     ScreenDefinition(SETTINGS, "Settings", "Future settings placeholder."),
     ScreenDefinition(ABOUT, "About", "Project information."),

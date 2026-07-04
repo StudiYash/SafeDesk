@@ -25,6 +25,7 @@ from safedesk.gui.navigation import (
     SETUP_STATUS,
     SETUP_WIZARD,
     SETTINGS,
+    SHUTDOWN_ESCALATION,
     THREAT_LEVEL_DEMO,
 )
 from safedesk.gui.screens.about_screen import AboutScreen
@@ -41,6 +42,7 @@ from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePrev
 from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
 from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
 from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
+from safedesk.gui.screens.shutdown_escalation_screen import ShutdownEscalationScreen
 from safedesk.gui.screens.threat_level_demo_screen import ThreatLevelDemoScreen
 from safedesk.gui.theme import apply_theme
 
@@ -93,6 +95,7 @@ class SafeDeskMainWindow(ctk.CTk):
             INTRUDER_DETECTION_DEMO: IntruderDetectionDemoScreen,
             THREAT_LEVEL_DEMO: ThreatLevelDemoScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
+            SHUTDOWN_ESCALATION: ShutdownEscalationScreen,
             DASHBOARD: DashboardPlaceholderScreen,
             SETTINGS: SettingsPlaceholderScreen,
             ABOUT: AboutScreen,

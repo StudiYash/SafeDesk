@@ -59,6 +59,7 @@ data/config/threat_state.json
 
 # Local protected-mode foundation state
 data/config/protected_mode_state.json
+data/config/shutdown_state.json
 
 # Databases and logs
 *.db

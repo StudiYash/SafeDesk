@@ -28,6 +28,7 @@ def test_log_model_constants_include_phase_11_categories():
     assert "intruder_detection" in EVENT_CATEGORIES
     assert "threat_level" in EVENT_CATEGORIES
     assert "protected_mode" in EVENT_CATEGORIES
+    assert "shutdown_escalation" in EVENT_CATEGORIES
     assert "success" in EVENT_STATUSES
     assert "blocked" in EVENT_STATUSES
     assert "WARNING" in EVENT_SEVERITIES
