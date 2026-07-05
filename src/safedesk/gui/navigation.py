@@ -2,6 +2,11 @@
 
 from dataclasses import dataclass
 
+LAUNCH = "launch"
+ADMIN_CONSOLE = "admin_console"
+PUBLIC_LOCK = "public_lock"
+BACKGROUND_AGENT = "background_agent"
+
 HOME = "home"
 SETUP_WIZARD = "setup_wizard"
 SETUP_STATUS = "setup_status"

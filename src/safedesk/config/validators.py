@@ -27,6 +27,7 @@ SUPPORTED_AUTH_HASH_ALGORITHMS = ("pbkdf2_sha256",)
 SUPPORTED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 SUPPORTED_LOG_DB_SUFFIXES = (".sqlite", ".sqlite3", ".db")
 SUPPORTED_INTRUDER_IMAGE_FORMATS = ("jpg", "png")
+SUPPORTED_APP_DEFAULT_START_MODES = ("launch", "admin_console", "public_lock")
 
 
 def is_basic_email(value: str) -> bool:
@@ -240,6 +241,36 @@ def validate_config(
                 "`security_mode.available_modes` contains unsupported values.",
             )
         )
+
+    app_modes = config.get("app_modes", {})
+    if not isinstance(app_modes, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_app_modes_section",
+                "`app_modes` must be a configuration object.",
+            )
+        )
+        app_modes = {}
+    default_start_mode = app_modes.get("default_start_mode")
+    if default_start_mode not in SUPPORTED_APP_DEFAULT_START_MODES:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_app_default_start_mode",
+                "`app_modes.default_start_mode` must be launch, admin_console, or public_lock in Phase 16.",
+            )
+        )
+
+    for key in ("allow_public_lock_placeholder", "allow_admin_console_from_launch"):
+        if not isinstance(app_modes.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_app_modes_boolean",
+                    f"`app_modes.{key}` must be a boolean.",
+                )
+            )
 
     threat_levels = config.get("threat_levels", {})
     for key in ("enabled", "foundation_enabled", "demo_only"):

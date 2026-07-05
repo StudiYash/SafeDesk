@@ -29,6 +29,11 @@ DEFAULT_CONFIG = {
         "default_mode": DEFAULT_SECURITY_MODE,
         "available_modes": list(SUPPORTED_SECURITY_MODES),
     },
+    "app_modes": {
+        "default_start_mode": "launch",
+        "allow_public_lock_placeholder": True,
+        "allow_admin_console_from_launch": True,
+    },
     "feature_flags": {
         "enable_real_email": False,
         "enable_real_shutdown": False,

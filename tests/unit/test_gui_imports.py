@@ -8,16 +8,20 @@ if str(SRC) not in sys.path:
 
 from safedesk.gui.navigation import (
     ABOUT,
+    ADMIN_CONSOLE,
     AUTHENTICATION_SETUP,
+    BACKGROUND_AGENT,
     DASHBOARD,
     EVENT_LOGS,
     FACE_RECOGNITION_DEMO,
     HOME,
     INTRUDER_DETECTION_DEMO,
+    LAUNCH,
     LIVENESS_DEMO,
     OWNER_FACE_REGISTRATION,
     OTP_EMAIL_SETUP,
     PROTECTED_MODE_PREVIEW,
+    PUBLIC_LOCK,
     SCREEN_NAMES,
     SETUP_STATUS,
     SETUP_WIZARD,
@@ -28,6 +32,10 @@ from safedesk.gui.navigation import (
 
 
 def test_navigation_metadata_contains_expected_screens():
+    assert LAUNCH == "launch"
+    assert ADMIN_CONSOLE == "admin_console"
+    assert PUBLIC_LOCK == "public_lock"
+    assert BACKGROUND_AGENT == "background_agent"
     assert set(SCREEN_NAMES) == {
         HOME,
         SETUP_WIZARD,
@@ -57,6 +65,8 @@ def test_gui_modules_import_without_opening_window():
     import safedesk.gui.main_window
     import safedesk.gui.theme
     from safedesk.gui.components import InfoBanner, PageHeader, ScrollablePage, SidebarButton, StatusCard
+    from safedesk.gui.screens.launch_screen import LaunchScreen
+    from safedesk.gui.screens.public_lock_screen import PublicLockScreen
 
     assert safedesk.gui.main_window.SafeDeskMainWindow is not None
     assert safedesk.gui.theme.apply_theme is not None
@@ -66,3 +76,5 @@ def test_gui_modules_import_without_opening_window():
     assert ScrollablePage is not None
     assert SidebarButton is not None
     assert StatusCard is not None
+    assert LaunchScreen is not None
+    assert PublicLockScreen is not None
