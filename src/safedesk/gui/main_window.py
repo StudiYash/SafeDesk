@@ -257,8 +257,6 @@ class SafeDeskMainWindow(ctk.CTk):
         self.current_screen = PublicLockScreen(
             self.content,
             self.context,
-            on_return_to_launch=self.show_launch_screen,
-            on_return_to_admin_console=self.show_admin_console,
         )
         self.current_screen.grid(row=0, column=0, sticky="nsew")
         self._log_app_route_event("lock_safedesk_placeholder_requested", "SafeDesk lock placeholder was requested manually.")
