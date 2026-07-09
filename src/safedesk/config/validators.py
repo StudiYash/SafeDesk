@@ -28,6 +28,9 @@ SUPPORTED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 SUPPORTED_LOG_DB_SUFFIXES = (".sqlite", ".sqlite3", ".db")
 SUPPORTED_INTRUDER_IMAGE_FORMATS = ("jpg", "png")
 SUPPORTED_APP_DEFAULT_START_MODES = ("launch", "admin_gate", "admin_console", "public_lock")
+SUPPORTED_GLOBAL_SHORTCUT_HOTKEYS = ("ctrl+alt+l",)
+SUPPORTED_GLOBAL_SHORTCUT_ACTIONS = ("public_lock",)
+SUPPORTED_GLOBAL_SHORTCUT_PLATFORMS = ("Windows",)
 
 
 def is_basic_email(value: str) -> bool:
@@ -368,6 +371,100 @@ def validate_config(
                 "error",
                 "background_agent_notifications_disabled",
                 "`background_agent.show_tray_notifications` must remain false in Phase 19.",
+            )
+        )
+
+    global_shortcut = config.get("global_shortcut", {})
+    if not isinstance(global_shortcut, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_global_shortcut_section",
+                "`global_shortcut` must be a configuration object.",
+            )
+        )
+        global_shortcut = {}
+
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "shortcut_enabled",
+        "require_app_running",
+        "allow_when_minimized_to_tray",
+        "allow_when_admin_console_open",
+        "allow_when_public_lock_open",
+    ):
+        if not isinstance(global_shortcut.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_global_shortcut_boolean",
+                    f"`global_shortcut.{key}` must be a boolean.",
+                )
+            )
+
+    if global_shortcut.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "global_shortcut_demo_only_required",
+                "`global_shortcut.demo_only` must remain true in Phase 20.",
+            )
+        )
+
+    if global_shortcut.get("require_app_running") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "global_shortcut_require_app_running",
+                "`global_shortcut.require_app_running` must remain true in Phase 20.",
+            )
+        )
+
+    hotkey = global_shortcut.get("hotkey")
+    normalized_hotkey = "".join(str(hotkey).lower().split()) if isinstance(hotkey, str) else ""
+    if normalized_hotkey not in SUPPORTED_GLOBAL_SHORTCUT_HOTKEYS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_global_shortcut_hotkey",
+                "`global_shortcut.hotkey` must be ctrl+alt+l in Phase 20.",
+            )
+        )
+
+    if global_shortcut.get("activation_action") not in SUPPORTED_GLOBAL_SHORTCUT_ACTIONS:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_global_shortcut_action",
+                "`global_shortcut.activation_action` must be public_lock in Phase 20.",
+            )
+        )
+
+    shortcut_platforms = global_shortcut.get("supported_platforms")
+    if not isinstance(shortcut_platforms, list) or not shortcut_platforms:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_global_shortcut_platforms",
+                "`global_shortcut.supported_platforms` must be a non-empty list of strings.",
+            )
+        )
+    elif any(not isinstance(platform, str) or not platform.strip() for platform in shortcut_platforms):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_global_shortcut_platforms",
+                "`global_shortcut.supported_platforms` must contain only non-empty strings.",
+            )
+        )
+    elif any(platform not in SUPPORTED_GLOBAL_SHORTCUT_PLATFORMS for platform in shortcut_platforms):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsupported_global_shortcut_platform",
+                "`global_shortcut.supported_platforms` may only include Windows in Phase 20.",
             )
         )
 

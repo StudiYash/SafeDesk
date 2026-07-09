@@ -15,6 +15,7 @@ from safedesk.app_modes import (
     parse_app_mode,
 )
 from safedesk.background_agent import BackgroundAgentManager, TrayController
+from safedesk.global_shortcut import GlobalShortcutManager, WindowsHotkeyController
 from safedesk.gui import design_system as ds
 from safedesk.gui.components.sidebar_button import SidebarButton
 from safedesk.gui.navigation import (
@@ -74,6 +75,9 @@ class SafeDeskMainWindow(ctk.CTk):
         self.admin_gate_manager = AdminGateManager(self.config)
         self.background_agent_manager = BackgroundAgentManager(self.config)
         self.tray_controller: TrayController | None = None
+        self.global_shortcut_manager = GlobalShortcutManager(self.config)
+        self.global_shortcut_controller: WindowsHotkeyController | None = None
+        self._hidden_to_tray = False
         self._destroying = False
         apply_theme(self.ui_config)
         super().__init__()
@@ -126,6 +130,7 @@ class SafeDeskMainWindow(ctk.CTk):
 
         self._build_sidebar()
         self._start_background_agent_if_configured()
+        self._start_global_shortcut_if_configured()
         self._show_initial_mode()
 
     def _build_sidebar(self) -> None:
@@ -259,6 +264,125 @@ class SafeDeskMainWindow(ctk.CTk):
                 {"tray_available": False, "tray_running": False},
             )
 
+    def _start_global_shortcut_if_configured(self) -> None:
+        if not self.global_shortcut_manager.should_attempt_registration():
+            status = self.global_shortcut_manager.build_status()
+            if self.global_shortcut_manager.enabled and self.global_shortcut_manager.shortcut_enabled:
+                self._log_app_route_event(
+                    "global_shortcut_unavailable",
+                    status.message,
+                    {
+                        "available": status.available,
+                        "registered": status.registered,
+                        "supported_platform": status.supported_platform,
+                        "activation_action": status.activation_action,
+                    },
+                )
+            return
+
+        self.global_shortcut_controller = WindowsHotkeyController(
+            hotkey=self.global_shortcut_manager.hotkey,
+            dispatch_to_gui=self._dispatch_gui_action_from_shortcut,
+            on_shortcut_pressed=self._handle_global_shortcut_activation,
+        )
+        result = self.global_shortcut_controller.start()
+        if result.success:
+            self._log_app_route_event(
+                "global_shortcut_started",
+                "Global shortcut support started.",
+                {
+                    "available": result.available,
+                    "registered": result.registered,
+                    "activation_action": self.global_shortcut_manager.activation_action,
+                },
+            )
+        else:
+            self._log_app_route_event(
+                "global_shortcut_registration_failed",
+                "Global shortcut support is unavailable.",
+                {
+                    "available": result.available,
+                    "registered": result.registered,
+                    "activation_action": self.global_shortcut_manager.activation_action,
+                },
+            )
+
+    def _stop_global_shortcut(self) -> None:
+        if self.global_shortcut_controller is None:
+            return
+        result = self.global_shortcut_controller.stop()
+        self.global_shortcut_controller = None
+        if result.success:
+            self._log_app_route_event(
+                "global_shortcut_stopped",
+                "Global shortcut support stopped.",
+                {"available": result.available, "registered": result.registered},
+            )
+
+    def _dispatch_gui_action_from_shortcut(self, callback: Callable[[], None]) -> None:
+        try:
+            self.after(0, callback)
+        except Exception:
+            pass
+
+    def _handle_global_shortcut_activation(self) -> None:
+        current_mode = self.mode_manager.current_mode
+        metadata = {
+            "activation_action": self.global_shortcut_manager.activation_action,
+            "route": SafeDeskMode.PUBLIC_LOCK.value,
+            "current_mode": current_mode.value,
+            "was_hidden_to_tray": self._hidden_to_tray,
+        }
+        self._log_app_route_event(
+            "global_shortcut_activation_requested",
+            "Global shortcut requested SafeDesk public lock screen.",
+            metadata,
+        )
+
+        if self.global_shortcut_manager.activation_action != "public_lock":
+            self._log_app_route_event(
+                "global_shortcut_activation_skipped",
+                "Global shortcut activation was skipped.",
+                metadata,
+            )
+            return
+
+        if current_mode == SafeDeskMode.PUBLIC_LOCK and not self.global_shortcut_manager.allow_when_public_lock_open:
+            self._log_app_route_event(
+                "global_shortcut_activation_skipped",
+                "Global shortcut activation was skipped because public lock is already open.",
+                metadata,
+            )
+            return
+
+        if self._hidden_to_tray and not self.global_shortcut_manager.allow_when_minimized_to_tray:
+            self._log_app_route_event(
+                "global_shortcut_activation_skipped",
+                "Global shortcut activation was skipped while SafeDesk was minimized to tray.",
+                metadata,
+            )
+            return
+
+        if current_mode == SafeDeskMode.ADMIN_CONSOLE and not self.global_shortcut_manager.allow_when_admin_console_open:
+            self._log_app_route_event(
+                "global_shortcut_activation_skipped",
+                "Global shortcut activation was skipped while Admin Console was open.",
+                metadata,
+            )
+            return
+
+        if self._hidden_to_tray:
+            self.restore_from_tray()
+        else:
+            self.deiconify()
+            self.lift()
+        self.show_public_lock_screen()
+        self._log_app_route_event(
+            "global_shortcut_public_lock_opened",
+            "Global shortcut opened SafeDesk public lock screen.",
+            metadata,
+        )
+
     def _tray_controls_available(self) -> bool:
         return (
             self.background_agent_manager.minimize_to_tray
@@ -303,6 +427,7 @@ class SafeDeskMainWindow(ctk.CTk):
             "SafeDesk was minimized to the system tray.",
             {"tray_available": True, "tray_running": True},
         )
+        self._hidden_to_tray = True
         self.withdraw()
         return True
 
@@ -312,6 +437,7 @@ class SafeDeskMainWindow(ctk.CTk):
             "SafeDesk was restored from the system tray.",
             {"tray_available": self.tray_controller is not None, "tray_running": self._tray_controls_available()},
         )
+        self._hidden_to_tray = False
         self.deiconify()
         self.lift()
 
@@ -319,6 +445,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self._log_app_route_event("tray_exit_requested", "Tray requested SafeDesk exit.")
         if self.tray_controller is not None:
             self.tray_controller.stop()
+        self._stop_global_shortcut()
         self.destroy()
 
     def _handle_window_close(self) -> None:
@@ -436,6 +563,7 @@ class SafeDeskMainWindow(ctk.CTk):
             return
         self._destroying = True
         self._release_current_screen_resources()
+        self._stop_global_shortcut()
         if self.tray_controller is not None:
             self.tray_controller.stop()
         super().destroy()

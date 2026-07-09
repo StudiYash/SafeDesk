@@ -48,6 +48,21 @@
     "allow_exit_from_tray": true,
     "show_tray_notifications": false
   },
+  "global_shortcut": {
+    "enabled": true,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "shortcut_enabled": true,
+    "hotkey": "ctrl+alt+l",
+    "activation_action": "public_lock",
+    "require_app_running": true,
+    "allow_when_minimized_to_tray": true,
+    "allow_when_admin_console_open": true,
+    "allow_when_public_lock_open": false,
+    "supported_platforms": [
+      "Windows"
+    ]
+  },
   "feature_flags": {
     "enable_real_email": false,
     "enable_real_shutdown": false,
