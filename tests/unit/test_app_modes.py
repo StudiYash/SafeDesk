@@ -34,24 +34,26 @@ def test_app_modes_default_to_launch():
 def test_app_modes_valid_launch_flow_transitions():
     manager = AppModeManager()
 
+    gate_result = manager.transition_to(SafeDeskMode.ADMIN_GATE)
     admin_result = manager.transition_to(SafeDeskMode.ADMIN_CONSOLE)
     lock_result = manager.transition_to(SafeDeskMode.PUBLIC_LOCK)
     launch_result = manager.transition_to(SafeDeskMode.LAUNCH)
 
+    assert gate_result.success is True
     assert admin_result.success is True
     assert lock_result.success is True
     assert launch_result.success is True
     assert manager.current_mode == SafeDeskMode.LAUNCH
 
 
-def test_app_modes_public_lock_can_return_to_admin_console_for_development():
+def test_app_modes_public_lock_can_return_to_admin_gate_for_development():
     manager = AppModeManager(SafeDeskMode.PUBLIC_LOCK)
 
-    result = manager.transition_to("admin_console")
+    result = manager.transition_to("admin_gate")
 
     assert result.success is True
     assert result.previous_mode == SafeDeskMode.PUBLIC_LOCK
-    assert result.new_mode == SafeDeskMode.ADMIN_CONSOLE
+    assert result.new_mode == SafeDeskMode.ADMIN_GATE
 
 
 def test_app_modes_invalid_transition_is_blocked():

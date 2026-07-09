@@ -31,6 +31,8 @@ def test_sanitize_metadata_redacts_sensitive_keys():
         "password_value": "secret",
         "panic_code": "111111",
         "otp_code": "123456",
+        "recovery_code": "ABCD1234secret!!",
+        "recovery_code_value": "ABCD1234secret!!",
         "email_app_password": "app-secret",
         "token": "token-value",
         "hash": "hash-value",
@@ -38,6 +40,11 @@ def test_sanitize_metadata_redacts_sensitive_keys():
         "image_path": "private-image.jpg",
         "image_saved": True,
         "image_count": 2,
+        "password_configured": True,
+        "recovery_codes_configured": True,
+        "recovery_code_count": 5,
+        "unused_recovery_code_count": 4,
+        "used_recovery_code_count": 1,
         "failed_password_count": 2,
         "failed_otp_count": 1,
         "failed_panic_count": 1,
@@ -52,6 +59,8 @@ def test_sanitize_metadata_redacts_sensitive_keys():
         "password_value",
         "panic_code",
         "otp_code",
+        "recovery_code",
+        "recovery_code_value",
         "email_app_password",
         "token",
         "hash",
@@ -63,6 +72,11 @@ def test_sanitize_metadata_redacts_sensitive_keys():
     assert sanitized["attempts"] == 1
     assert sanitized["image_saved"] is True
     assert sanitized["image_count"] == 2
+    assert sanitized["password_configured"] is True
+    assert sanitized["recovery_codes_configured"] is True
+    assert sanitized["recovery_code_count"] == 5
+    assert sanitized["unused_recovery_code_count"] == 4
+    assert sanitized["used_recovery_code_count"] == 1
     assert sanitized["failed_password_count"] == 2
     assert sanitized["failed_otp_count"] == 1
     assert sanitized["failed_panic_count"] == 1

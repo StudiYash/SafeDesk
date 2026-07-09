@@ -29,6 +29,15 @@
     "allow_public_lock_placeholder": true,
     "allow_admin_console_from_launch": true
   },
+  "admin_gate": {
+    "enabled": true,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "require_password_if_configured": true,
+    "allow_development_continue_if_unconfigured": true,
+    "max_attempts": 3,
+    "lockout_seconds": 30
+  },
   "feature_flags": {
     "enable_real_email": false,
     "enable_real_shutdown": false,
@@ -94,6 +103,15 @@
     "minimum_panic_code_length": 6,
     "max_unlock_attempts": 3,
     "lockout_seconds": 30
+  },
+  "recovery_codes": {
+    "enabled": true,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "code_count": 5,
+    "code_length": 16,
+    "allowed_special_characters": "!@#$%^&*()-_=+[]{}?",
+    "single_use": true
   },
   "otp": {
     "enabled": false,

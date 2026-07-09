@@ -6,12 +6,14 @@ from safedesk.auth.authentication_service import (
     AuthenticationSetupResult,
     AuthenticationStatus,
     AuthenticationVerificationResult,
+    RecoveryCodeGenerationResult,
 )
 from safedesk.auth.local_secret_store import (
     AuthenticationSecretStatus,
     AuthenticationSecretStoreData,
     LocalSecretStore,
     LocalSecretStoreResult,
+    StoredRecoveryCodeRecord,
     StoredSecretRecord,
     build_authentication_secret_status,
     load_authentication_secrets,
@@ -59,6 +61,8 @@ __all__ = [
     "PasswordHashRecord",
     "PasswordHashResult",
     "PasswordVerificationResult",
+    "RecoveryCodeGenerationResult",
+    "StoredRecoveryCodeRecord",
     "StoredSecretRecord",
     "build_authentication_secret_status",
     "hash_secret",

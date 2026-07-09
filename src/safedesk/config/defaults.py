@@ -34,6 +34,15 @@ DEFAULT_CONFIG = {
         "allow_public_lock_placeholder": True,
         "allow_admin_console_from_launch": True,
     },
+    "admin_gate": {
+        "enabled": True,
+        "foundation_enabled": True,
+        "demo_only": True,
+        "require_password_if_configured": True,
+        "allow_development_continue_if_unconfigured": True,
+        "max_attempts": 3,
+        "lockout_seconds": 30,
+    },
     "feature_flags": {
         "enable_real_email": False,
         "enable_real_shutdown": False,
@@ -99,6 +108,15 @@ DEFAULT_CONFIG = {
         "minimum_panic_code_length": 6,
         "max_unlock_attempts": 3,
         "lockout_seconds": 30,
+    },
+    "recovery_codes": {
+        "enabled": True,
+        "foundation_enabled": True,
+        "demo_only": True,
+        "code_count": 5,
+        "code_length": 16,
+        "allowed_special_characters": "!@#$%^&*()-_=+[]{}?",
+        "single_use": True,
     },
     "otp": {
         "enabled": False,

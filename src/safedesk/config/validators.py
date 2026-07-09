@@ -27,7 +27,7 @@ SUPPORTED_AUTH_HASH_ALGORITHMS = ("pbkdf2_sha256",)
 SUPPORTED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 SUPPORTED_LOG_DB_SUFFIXES = (".sqlite", ".sqlite3", ".db")
 SUPPORTED_INTRUDER_IMAGE_FORMATS = ("jpg", "png")
-SUPPORTED_APP_DEFAULT_START_MODES = ("launch", "admin_console", "public_lock")
+SUPPORTED_APP_DEFAULT_START_MODES = ("launch", "admin_gate", "admin_console", "public_lock")
 
 
 def is_basic_email(value: str) -> bool:
@@ -258,7 +258,7 @@ def validate_config(
             ConfigValidationIssue(
                 "error",
                 "unsupported_app_default_start_mode",
-                "`app_modes.default_start_mode` must be launch, admin_console, or public_lock in Phase 16.",
+                "`app_modes.default_start_mode` must be launch, admin_gate, admin_console, or public_lock.",
             )
         )
 
@@ -271,6 +271,57 @@ def validate_config(
                     f"`app_modes.{key}` must be a boolean.",
                 )
             )
+
+    admin_gate = config.get("admin_gate", {})
+    if not isinstance(admin_gate, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_admin_gate_section",
+                "`admin_gate` must be a configuration object.",
+            )
+        )
+        admin_gate = {}
+
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "require_password_if_configured",
+        "allow_development_continue_if_unconfigured",
+    ):
+        if not isinstance(admin_gate.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_admin_gate_boolean",
+                    f"`admin_gate.{key}` must be a boolean.",
+                )
+            )
+
+    admin_gate_max_attempts = admin_gate.get("max_attempts")
+    if isinstance(admin_gate_max_attempts, bool) or not isinstance(admin_gate_max_attempts, int) or admin_gate_max_attempts < 1:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_admin_gate_max_attempts",
+                "`admin_gate.max_attempts` must be an integer greater than or equal to 1.",
+            )
+        )
+
+    admin_gate_lockout_seconds = admin_gate.get("lockout_seconds")
+    if (
+        isinstance(admin_gate_lockout_seconds, bool)
+        or not isinstance(admin_gate_lockout_seconds, int)
+        or admin_gate_lockout_seconds < 0
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_admin_gate_lockout_seconds",
+                "`admin_gate.lockout_seconds` must be zero or a positive integer.",
+            )
+        )
 
     threat_levels = config.get("threat_levels", {})
     for key in ("enabled", "foundation_enabled", "demo_only"):
@@ -729,6 +780,74 @@ def validate_config(
         issue = _positive_int_issue(config, item)
         if issue:
             issues.append(issue)
+
+    recovery_codes = config.get("recovery_codes", {})
+    if not isinstance(recovery_codes, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_recovery_codes_section",
+                "`recovery_codes` must be a configuration object.",
+            )
+        )
+        recovery_codes = {}
+
+    for key in ("enabled", "foundation_enabled", "demo_only", "single_use"):
+        if not isinstance(recovery_codes.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_recovery_codes_boolean",
+                    f"`recovery_codes.{key}` must be a boolean.",
+                )
+            )
+
+    if recovery_codes.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "recovery_codes_demo_only_required",
+                "`recovery_codes.demo_only` must remain true in Phase 18.1.",
+            )
+        )
+
+    recovery_code_count = recovery_codes.get("code_count")
+    if isinstance(recovery_code_count, bool) or not isinstance(recovery_code_count, int) or not 1 <= recovery_code_count <= 20:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_recovery_code_count",
+                "`recovery_codes.code_count` must be an integer between 1 and 20.",
+            )
+        )
+
+    recovery_code_length = recovery_codes.get("code_length")
+    if isinstance(recovery_code_length, bool) or not isinstance(recovery_code_length, int) or recovery_code_length != 16:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_recovery_code_length",
+                "`recovery_codes.code_length` must be exactly 16 in Phase 18.1.",
+            )
+        )
+
+    recovery_special_characters = recovery_codes.get("allowed_special_characters")
+    if not isinstance(recovery_special_characters, str) or not recovery_special_characters:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_recovery_special_characters",
+                "`recovery_codes.allowed_special_characters` must be a non-empty string.",
+            )
+        )
+    elif any(character.isspace() for character in recovery_special_characters):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "recovery_special_characters_whitespace",
+                "`recovery_codes.allowed_special_characters` must not contain whitespace.",
+            )
+        )
 
     logging_config = config.get("logging", {})
     for key in ("enabled", "demo_only"):

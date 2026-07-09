@@ -6,6 +6,7 @@ from typing import Callable
 
 import customtkinter as ctk
 
+from safedesk.admin_gate import AdminGateManager
 from safedesk.app.application import RuntimeContext
 from safedesk.app_modes import (
     AppModeManager,
@@ -35,6 +36,7 @@ from safedesk.gui.navigation import (
     THREAT_LEVEL_DEMO,
 )
 from safedesk.gui.screens.about_screen import AboutScreen
+from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
 from safedesk.gui.screens.authentication_setup_screen import AuthenticationSetupScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
@@ -64,9 +66,11 @@ class SafeDeskMainWindow(ctk.CTk):
         self.config = context.load_result.config
         self.ui_config = self.config.get("ui", {})
         self.app_mode_config = self.config.get("app_modes", {})
+        self.admin_gate_config = self.config.get("admin_gate", {})
         self.public_lock_placeholder_allowed = can_open_public_lock_placeholder(self.config)
         self.mode_manager = AppModeManager(self._configured_start_mode())
         self.event_logger = build_logger_from_config(self.config)
+        self.admin_gate_manager = AdminGateManager(self.config)
         apply_theme(self.ui_config)
         super().__init__()
 
@@ -188,14 +192,14 @@ class SafeDeskMainWindow(ctk.CTk):
         configured = parse_app_mode(self.app_mode_config.get("default_start_mode", SafeDeskMode.LAUNCH.value))
         if configured == SafeDeskMode.PUBLIC_LOCK and not self.public_lock_placeholder_allowed:
             return SafeDeskMode.LAUNCH
-        if configured in {SafeDeskMode.ADMIN_CONSOLE, SafeDeskMode.PUBLIC_LOCK}:
+        if configured in {SafeDeskMode.ADMIN_GATE, SafeDeskMode.ADMIN_CONSOLE, SafeDeskMode.PUBLIC_LOCK}:
             return configured
         return SafeDeskMode.LAUNCH
 
     def _show_initial_mode(self) -> None:
         initial_mode = self.mode_manager.current_mode
-        if initial_mode == SafeDeskMode.ADMIN_CONSOLE:
-            self.show_admin_console()
+        if initial_mode in {SafeDeskMode.ADMIN_GATE, SafeDeskMode.ADMIN_CONSOLE}:
+            self.show_admin_gate()
         elif initial_mode == SafeDeskMode.PUBLIC_LOCK:
             self.show_public_lock_screen()
         else:
@@ -215,9 +219,12 @@ class SafeDeskMainWindow(ctk.CTk):
         self.sidebar.grid_remove()
         self.content.grid_configure(row=0, column=0, columnspan=2, sticky="nsew")
 
-    def _log_app_route_event(self, action: str, message: str) -> None:
+    def _log_app_route_event(self, action: str, message: str, metadata: dict | None = None) -> None:
         try:
-            self.event_logger.log_app_event(action=action, status="info", message=message, metadata={"mode": self.mode_manager.current_mode.value})
+            event_metadata = {"mode": self.mode_manager.current_mode.value}
+            if metadata:
+                event_metadata.update(metadata)
+            self.event_logger.log_app_event(action=action, status="info", message=message, metadata=event_metadata)
         except Exception:
             pass
 
@@ -233,17 +240,58 @@ class SafeDeskMainWindow(ctk.CTk):
         self.current_screen = LaunchScreen(
             self.content,
             self.context,
-            on_open_admin_console=self.show_admin_console,
+            on_open_admin_console=self.show_admin_gate,
             on_open_public_lock=self.show_public_lock_screen,
             on_exit=self.destroy,
         )
         self.current_screen.grid(row=0, column=0, sticky="nsew")
         self._log_app_route_event("launch_screen_opened", "SafeDesk launch screen opened.")
 
-    def show_admin_console(self, initial_screen: str = HOME) -> None:
+    def _admin_gate_enabled(self) -> bool:
+        return self.admin_gate_config.get("enabled", True) is True and self.admin_gate_config.get("foundation_enabled", True) is True
+
+    def show_admin_gate(self, initial_screen: str = HOME) -> None:
+        if not self._admin_gate_enabled():
+            self._log_app_route_event(
+                "admin_gate_bypassed_by_config",
+                "Owner/Admin Gate is disabled by local configuration.",
+                {"initial_screen": initial_screen},
+            )
+            self._open_admin_console_after_gate(initial_screen)
+            return
+
+        self.mode_manager.transition_to(SafeDeskMode.ADMIN_GATE)
+        self._clear_current_screen()
+        self._show_route_layout()
+        self._set_admin_active_button(None)
+        self.current_screen = AdminGateScreen(
+            self.content,
+            self.context,
+            self.admin_gate_manager,
+            on_gate_success=lambda screen=initial_screen: self._open_admin_console_after_gate(screen),
+            on_continue_setup=lambda: self._open_admin_console_after_gate(AUTHENTICATION_SETUP),
+            on_back_to_launch=self.show_launch_screen,
+        )
+        self.current_screen.grid(row=0, column=0, sticky="nsew")
+        self._log_app_route_event("admin_gate_opened", "Owner/Admin Gate opened.", {"initial_screen": initial_screen})
+
+    def show_admin_console(self, initial_screen: str = HOME, gate_verified: bool = False) -> None:
+        if self._admin_gate_enabled() and not gate_verified:
+            self.show_admin_gate(initial_screen)
+            return
+
+        self._open_admin_console_after_gate(initial_screen)
+
+    def _open_admin_console_after_gate(self, initial_screen: str = HOME) -> None:
+        if self.mode_manager.current_mode != SafeDeskMode.ADMIN_GATE:
+            self.mode_manager.transition_to(SafeDeskMode.ADMIN_GATE)
         self.mode_manager.transition_to(SafeDeskMode.ADMIN_CONSOLE)
         self._show_admin_layout()
-        self._log_app_route_event("admin_console_opened", "SafeDesk admin console opened.")
+        self._log_app_route_event(
+            "admin_console_opened_after_gate",
+            "SafeDesk admin console opened after gate route.",
+            {"initial_screen": initial_screen},
+        )
         self._show_admin_screen(initial_screen)
 
     def show_public_lock_screen(self) -> None:
@@ -264,7 +312,7 @@ class SafeDeskMainWindow(ctk.CTk):
 
     def show_screen(self, screen_name: str) -> None:
         if self.mode_manager.current_mode != SafeDeskMode.ADMIN_CONSOLE:
-            self.show_admin_console(screen_name)
+            self.show_admin_gate(screen_name)
             return
 
         self._show_admin_screen(screen_name)

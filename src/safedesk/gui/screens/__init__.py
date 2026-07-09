@@ -1,6 +1,7 @@
 """Placeholder screens for the SafeDesk GUI shell."""
 
 from safedesk.gui.screens.about_screen import AboutScreen
+from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
 from safedesk.gui.screens.authentication_setup_screen import AuthenticationSetupScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
@@ -21,6 +22,7 @@ from safedesk.gui.screens.threat_level_demo_screen import ThreatLevelDemoScreen
 
 __all__ = [
     "AboutScreen",
+    "AdminGateScreen",
     "AuthenticationSetupScreen",
     "DashboardPlaceholderScreen",
     "FaceRecognitionDemoScreen",

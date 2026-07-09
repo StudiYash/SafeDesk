@@ -20,6 +20,7 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         self.context = context
         self.service = AuthenticationService(context.load_result.config)
         self.event_logger = build_logger_from_config(context.load_result.config)
+        self.generated_recovery_codes: tuple[str, ...] = ()
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -120,14 +121,14 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         panic_panel.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
             panic_panel,
-            text="Set Panic / Recovery Code",
+            text="Set Panic Code",
             font=ctk.CTkFont(size=ds.FONT_H3, weight="bold"),
             text_color=ds.TEXT_PRIMARY,
             anchor="w",
         ).grid(row=0, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(ds.SPACE_LG, ds.SPACE_SM))
-        self.panic_code = FormField(panic_panel, "Panic / recovery code", "Enter recovery code", show="*")
+        self.panic_code = FormField(panic_panel, "Panic code", "Enter panic code", show="*")
         self.panic_code.grid(row=1, column=0, sticky="ew", padx=ds.SPACE_LG, pady=6)
-        self.confirm_panic_code = FormField(panic_panel, "Confirm panic / recovery code", "Re-enter recovery code", show="*")
+        self.confirm_panic_code = FormField(panic_panel, "Confirm panic code", "Re-enter panic code", show="*")
         self.confirm_panic_code.grid(row=2, column=0, sticky="ew", padx=ds.SPACE_LG, pady=6)
         ctk.CTkButton(
             panic_panel,
@@ -165,6 +166,72 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
             **ds.secondary_button_kwargs(),
         ).grid(row=2, column=1, sticky="ew", padx=(ds.SPACE_SM, ds.SPACE_LG), pady=(8, ds.SPACE_LG))
 
+        recovery_panel = ctk.CTkFrame(page, **ds.card_kwargs())
+        recovery_panel.grid(row=5, column=0, columnspan=2, sticky="ew", padx=4, pady=6)
+        recovery_panel.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(
+            recovery_panel,
+            text="Owner Recovery Codes",
+            font=ctk.CTkFont(size=ds.FONT_H3, weight="bold"),
+            text_color=ds.TEXT_PRIMARY,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(ds.SPACE_LG, ds.SPACE_SM))
+        InfoBanner(
+            recovery_panel,
+            "These recovery codes will be shown only once.\n\n"
+            "Store them somewhere safe. SafeDesk cannot show these codes again later.\n\n"
+            "If you forget your owner password and lose these recovery codes, you may lose access to the Admin Console.",
+            kind="warning",
+            compact=True,
+            wraplength=760,
+        ).grid(row=1, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_SM))
+        self.recovery_status_label = ctk.CTkLabel(
+            recovery_panel,
+            text="",
+            justify="left",
+            anchor="w",
+            text_color=ds.TEXT_SECONDARY,
+            font=ctk.CTkFont(size=ds.FONT_BODY),
+        )
+        self.recovery_status_label.grid(row=2, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_SM))
+        self.recovery_codes_textbox = ctk.CTkTextbox(
+            recovery_panel,
+            height=150,
+            fg_color=ds.CARD_BG_ALT,
+            border_color=ds.BORDER_MUTED,
+            border_width=1,
+            text_color=ds.TEXT_PRIMARY,
+            font=ctk.CTkFont(size=ds.FONT_BODY),
+        )
+        self.recovery_codes_textbox.grid(row=3, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_SM))
+        self._set_recovery_code_display("Generated recovery codes will appear here once. Existing codes cannot be shown again.")
+
+        recovery_actions = ctk.CTkFrame(recovery_panel, fg_color="transparent")
+        recovery_actions.grid(row=4, column=0, sticky="ew", padx=ds.SPACE_LG, pady=(0, ds.SPACE_LG))
+        recovery_actions.grid_columnconfigure((0, 1, 2), weight=1, uniform="recovery_actions")
+        self.generate_recovery_codes_button = ctk.CTkButton(
+            recovery_actions,
+            text="Generate Recovery Codes",
+            command=self.generate_recovery_codes,
+            **ds.primary_button_kwargs(),
+        )
+        self.generate_recovery_codes_button.grid(row=0, column=0, sticky="ew", padx=(0, ds.SPACE_SM))
+        self.regenerate_recovery_codes_button = ctk.CTkButton(
+            recovery_actions,
+            text="Regenerate Recovery Codes",
+            command=self.regenerate_recovery_codes,
+            **ds.secondary_button_kwargs(),
+        )
+        self.regenerate_recovery_codes_button.grid(row=0, column=1, sticky="ew", padx=ds.SPACE_SM)
+        self.copy_recovery_codes_button = ctk.CTkButton(
+            recovery_actions,
+            text="Copy Codes",
+            command=self.copy_recovery_codes,
+            state="disabled",
+            **ds.secondary_button_kwargs(),
+        )
+        self.copy_recovery_codes_button.grid(row=0, column=2, sticky="ew", padx=(ds.SPACE_SM, 0))
+
         self.refresh_status()
 
     def refresh_status(self) -> None:
@@ -176,11 +243,28 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
             text=(
                 f"Master password: {'configured' if status.master_password_configured else 'not configured'}\n"
                 f"Panic code: {'configured' if status.panic_code_configured else 'not configured'}\n"
+                f"Recovery codes: {'configured' if status.recovery_codes_configured else 'not configured'}\n"
+                f"Unused recovery codes: {status.unused_recovery_code_count}\n"
+                f"Used recovery codes: {status.used_recovery_code_count}\n"
                 f"Secret store: {store_state}\n"
                 f"Mode: {'foundation only' if status.demo_only else 'review required'}\n"
                 f"Foundation: {'enabled' if status.foundation_enabled else 'disabled'}"
             )
         )
+        self.recovery_status_label.configure(
+            text=(
+                f"Configured: {'yes' if status.recovery_codes_configured else 'no'}\n"
+                f"Total codes: {status.recovery_code_count}\n"
+                f"Unused: {status.unused_recovery_code_count}\n"
+                f"Used: {status.used_recovery_code_count}\n"
+                f"Foundation: {'enabled' if status.recovery_foundation_enabled else 'disabled'}"
+            )
+        )
+        if hasattr(self, "generate_recovery_codes_button"):
+            has_codes = status.recovery_codes_configured
+            self.generate_recovery_codes_button.configure(state="disabled" if has_codes else "normal")
+            self.regenerate_recovery_codes_button.configure(state="normal" if has_codes else "disabled")
+            self.copy_recovery_codes_button.configure(state="normal" if self.generated_recovery_codes else "disabled")
 
     def save_master_password(self) -> None:
         try:
@@ -195,11 +279,56 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         self.result_banner.set_message(result.message)
         self.refresh_status()
 
+    def generate_recovery_codes(self) -> None:
+        self._generate_recovery_codes(regenerate=False)
+
+    def regenerate_recovery_codes(self) -> None:
+        self._generate_recovery_codes(regenerate=True)
+
+    def _generate_recovery_codes(self, *, regenerate: bool) -> None:
+        status = self.service.build_status()
+        if status.recovery_codes_configured and not regenerate:
+            self.result_banner.set_message("Recovery codes already exist. Use Regenerate Recovery Codes to replace them.")
+            self.refresh_status()
+            return
+        try:
+            result = self.service.generate_recovery_codes()
+        except Exception:
+            self.result_banner.set_message("Recovery codes could not be generated due to a local storage error.")
+            return
+        if result.success:
+            self.generated_recovery_codes = result.codes
+            self._set_recovery_code_display("\n".join(result.codes))
+            self.copy_recovery_codes_button.configure(state="normal")
+        action = "recovery_codes_regenerated" if regenerate else "recovery_codes_generated"
+        message = result.message
+        if result.success and regenerate:
+            message = (
+                "Recovery codes regenerated. Previous unused recovery codes will no longer work. "
+                "These codes will not be shown again."
+            )
+        self._log_auth_action(
+            action,
+            result.success,
+            result.status,
+            {"recovery_code_count": len(result.codes)},
+        )
+        self.result_banner.set_message(message)
+        self.refresh_status()
+
+    def copy_recovery_codes(self) -> None:
+        if not self.generated_recovery_codes:
+            self.result_banner.set_message("No newly generated recovery codes are available to copy.")
+            return
+        self.clipboard_clear()
+        self.clipboard_append("\n".join(self.generated_recovery_codes))
+        self.result_banner.set_message("Newly generated recovery codes copied to clipboard. Store them somewhere safe.")
+
     def save_panic_code(self) -> None:
         try:
             result = self.service.set_panic_code(self.panic_code.get(), self.confirm_panic_code.get())
         except Exception:
-            self.result_banner.set_message("Panic/recovery code could not be saved due to a local storage error.")
+            self.result_banner.set_message("Panic code could not be saved due to a local storage error.")
             return
         if result.success:
             self.panic_code.clear()
@@ -243,6 +372,12 @@ class AuthenticationSetupScreen(ctk.CTkFrame):
         ):
             field.clear()
         self.result_banner.set_message("Secret input fields cleared.")
+
+    def _set_recovery_code_display(self, text: str) -> None:
+        self.recovery_codes_textbox.configure(state="normal")
+        self.recovery_codes_textbox.delete("1.0", "end")
+        self.recovery_codes_textbox.insert("1.0", text)
+        self.recovery_codes_textbox.configure(state="disabled")
 
     @staticmethod
     def _verification_message(label: str, status: str, message: str, remaining_attempts: int) -> str:

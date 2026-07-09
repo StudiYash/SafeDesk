@@ -7,17 +7,24 @@ from safedesk.app_modes.mode_models import AppModeTransitionResult, SafeDeskMode
 ALLOWED_MODE_TRANSITIONS: dict[SafeDeskMode, tuple[SafeDeskMode, ...]] = {
     SafeDeskMode.LAUNCH: (
         SafeDeskMode.LAUNCH,
+        SafeDeskMode.ADMIN_GATE,
+        SafeDeskMode.PUBLIC_LOCK,
+    ),
+    SafeDeskMode.ADMIN_GATE: (
+        SafeDeskMode.LAUNCH,
+        SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.ADMIN_CONSOLE,
         SafeDeskMode.PUBLIC_LOCK,
     ),
     SafeDeskMode.ADMIN_CONSOLE: (
         SafeDeskMode.LAUNCH,
+        SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.ADMIN_CONSOLE,
         SafeDeskMode.PUBLIC_LOCK,
     ),
     SafeDeskMode.PUBLIC_LOCK: (
         SafeDeskMode.LAUNCH,
-        SafeDeskMode.ADMIN_CONSOLE,
+        SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.PUBLIC_LOCK,
     ),
     SafeDeskMode.BACKGROUND_AGENT: (

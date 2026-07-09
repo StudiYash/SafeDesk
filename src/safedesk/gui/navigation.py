@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 LAUNCH = "launch"
+ADMIN_GATE = "admin_gate"
 ADMIN_CONSOLE = "admin_console"
 PUBLIC_LOCK = "public_lock"
 BACKGROUND_AGENT = "background_agent"

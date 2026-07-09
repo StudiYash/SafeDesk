@@ -39,6 +39,11 @@ SAFE_METADATA_KEYS = {
     "failed_password_count",
     "image_saved",
     "image_count",
+    "password_configured",
+    "recovery_codes_configured",
+    "recovery_code_count",
+    "unused_recovery_code_count",
+    "used_recovery_code_count",
 }
 
 MAX_STRING_LENGTH = 300
