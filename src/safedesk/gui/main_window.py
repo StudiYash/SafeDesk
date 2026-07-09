@@ -14,6 +14,7 @@ from safedesk.app_modes import (
     can_open_public_lock_placeholder,
     parse_app_mode,
 )
+from safedesk.background_agent import BackgroundAgentManager, TrayController
 from safedesk.gui import design_system as ds
 from safedesk.gui.components.sidebar_button import SidebarButton
 from safedesk.gui.navigation import (
@@ -71,6 +72,9 @@ class SafeDeskMainWindow(ctk.CTk):
         self.mode_manager = AppModeManager(self._configured_start_mode())
         self.event_logger = build_logger_from_config(self.config)
         self.admin_gate_manager = AdminGateManager(self.config)
+        self.background_agent_manager = BackgroundAgentManager(self.config)
+        self.tray_controller: TrayController | None = None
+        self._destroying = False
         apply_theme(self.ui_config)
         super().__init__()
 
@@ -83,7 +87,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self.geometry(f"{width}x{height}")
         self.minsize(min_width, min_height)
         self.configure(fg_color=ds.APP_BG)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.protocol("WM_DELETE_WINDOW", self._handle_window_close)
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -121,6 +125,7 @@ class SafeDeskMainWindow(ctk.CTk):
         }
 
         self._build_sidebar()
+        self._start_background_agent_if_configured()
         self._show_initial_mode()
 
     def _build_sidebar(self) -> None:
@@ -228,6 +233,99 @@ class SafeDeskMainWindow(ctk.CTk):
         except Exception:
             pass
 
+    def _start_background_agent_if_configured(self) -> None:
+        if not self.background_agent_manager.should_attempt_tray():
+            return
+
+        self.tray_controller = TrayController(
+            dispatch_to_gui=self._dispatch_gui_action_from_tray,
+            on_open_safedesk=self.show_launch_screen_from_tray,
+            on_open_admin_console=self.show_admin_gate_from_tray,
+            on_lock_safedesk=self.show_public_lock_from_tray,
+            on_exit_safedesk=self.exit_from_tray,
+            allow_exit=self.background_agent_manager.allow_exit_from_tray,
+        )
+        result = self.tray_controller.start()
+        if result.success:
+            self._log_app_route_event(
+                "tray_icon_started",
+                "SafeDesk system tray support started.",
+                {"tray_available": result.tray_available, "tray_running": result.tray_running},
+            )
+        else:
+            self._log_app_route_event(
+                "tray_icon_unavailable",
+                "SafeDesk system tray support is unavailable.",
+                {"tray_available": False, "tray_running": False},
+            )
+
+    def _tray_controls_available(self) -> bool:
+        return (
+            self.background_agent_manager.minimize_to_tray
+            and self.tray_controller is not None
+            and self.tray_controller.tray_running
+        )
+
+    def _dispatch_gui_action_from_tray(self, callback: Callable[[], None]) -> None:
+        try:
+            self.after(0, callback)
+        except Exception:
+            pass
+
+    def show_launch_screen_from_tray(self) -> None:
+        self._log_app_route_event("tray_open_safedesk_requested", "Tray requested SafeDesk launch screen.")
+        self.restore_from_tray()
+        self.show_launch_screen()
+
+    def show_admin_gate_from_tray(self) -> None:
+        self._log_app_route_event("tray_open_admin_gate_requested", "Tray requested Owner/Admin Gate.")
+        self.restore_from_tray()
+        self.show_admin_gate()
+
+    def show_public_lock_from_tray(self) -> None:
+        self._log_app_route_event("tray_public_lock_requested", "Tray requested SafeDesk public lock screen.")
+        self.restore_from_tray()
+        self.show_public_lock_screen()
+
+    def hide_to_tray(self) -> bool:
+        if not self._tray_controls_available():
+            self._log_app_route_event(
+                "tray_hide_unavailable",
+                "SafeDesk could not be minimized to tray because tray support is unavailable.",
+                {"tray_available": False, "tray_running": False},
+            )
+            return False
+
+        self._release_current_screen_resources()
+        self.mode_manager.transition_to(SafeDeskMode.BACKGROUND_AGENT)
+        self._log_app_route_event(
+            "tray_hide_requested",
+            "SafeDesk was minimized to the system tray.",
+            {"tray_available": True, "tray_running": True},
+        )
+        self.withdraw()
+        return True
+
+    def restore_from_tray(self) -> None:
+        self._log_app_route_event(
+            "tray_restore_requested",
+            "SafeDesk was restored from the system tray.",
+            {"tray_available": self.tray_controller is not None, "tray_running": self._tray_controls_available()},
+        )
+        self.deiconify()
+        self.lift()
+
+    def exit_from_tray(self) -> None:
+        self._log_app_route_event("tray_exit_requested", "Tray requested SafeDesk exit.")
+        if self.tray_controller is not None:
+            self.tray_controller.stop()
+        self.destroy()
+
+    def _handle_window_close(self) -> None:
+        if self.background_agent_manager.close_to_tray and self.hide_to_tray():
+            return
+        self.destroy()
+
     def _set_admin_active_button(self, screen_name: str | None) -> None:
         for name, button in self.buttons.items():
             button.set_active(name == screen_name)
@@ -242,6 +340,8 @@ class SafeDeskMainWindow(ctk.CTk):
             self.context,
             on_open_admin_console=self.show_admin_gate,
             on_open_public_lock=self.show_public_lock_screen,
+            on_minimize_to_tray=self.hide_to_tray,
+            tray_controls_enabled=self._tray_controls_available(),
             on_exit=self.destroy,
         )
         self.current_screen.grid(row=0, column=0, sticky="nsew")
@@ -332,5 +432,10 @@ class SafeDeskMainWindow(ctk.CTk):
                 release()
 
     def destroy(self) -> None:
+        if self._destroying:
+            return
+        self._destroying = True
         self._release_current_screen_resources()
+        if self.tray_controller is not None:
+            self.tray_controller.stop()
         super().destroy()

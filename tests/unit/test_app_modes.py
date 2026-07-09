@@ -57,13 +57,29 @@ def test_app_modes_public_lock_can_return_to_admin_gate_for_development():
 
 
 def test_app_modes_invalid_transition_is_blocked():
-    manager = AppModeManager(SafeDeskMode.BACKGROUND_AGENT)
+    manager = AppModeManager(SafeDeskMode.LAUNCH)
 
-    result = manager.transition_to(SafeDeskMode.PUBLIC_LOCK)
+    result = manager.transition_to(SafeDeskMode.ADMIN_CONSOLE)
 
     assert result.success is False
     assert result.status == "blocked"
-    assert manager.current_mode == SafeDeskMode.BACKGROUND_AGENT
+    assert manager.current_mode == SafeDeskMode.LAUNCH
+
+
+def test_app_modes_background_agent_can_restore_to_safe_routes():
+    manager = AppModeManager(SafeDeskMode.LAUNCH)
+
+    hide_result = manager.transition_to(SafeDeskMode.BACKGROUND_AGENT)
+    launch_result = manager.transition_to(SafeDeskMode.LAUNCH)
+    manager.transition_to(SafeDeskMode.BACKGROUND_AGENT)
+    gate_result = manager.transition_to(SafeDeskMode.ADMIN_GATE)
+    manager.transition_to(SafeDeskMode.BACKGROUND_AGENT)
+    public_lock_result = manager.transition_to(SafeDeskMode.PUBLIC_LOCK)
+
+    assert hide_result.success is True
+    assert launch_result.success is True
+    assert gate_result.success is True
+    assert public_lock_result.success is True
 
 
 def test_app_modes_parse_unsupported_value_safely():

@@ -38,6 +38,16 @@
     "max_attempts": 3,
     "lockout_seconds": 30
   },
+  "background_agent": {
+    "enabled": true,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "system_tray_enabled": true,
+    "minimize_to_tray": true,
+    "close_to_tray": false,
+    "allow_exit_from_tray": true,
+    "show_tray_notifications": false
+  },
   "feature_flags": {
     "enable_real_email": false,
     "enable_real_shutdown": false,

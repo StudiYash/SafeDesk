@@ -323,6 +323,54 @@ def validate_config(
             )
         )
 
+    background_agent = config.get("background_agent", {})
+    if not isinstance(background_agent, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_background_agent_section",
+                "`background_agent` must be a configuration object.",
+            )
+        )
+        background_agent = {}
+
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "system_tray_enabled",
+        "minimize_to_tray",
+        "close_to_tray",
+        "allow_exit_from_tray",
+        "show_tray_notifications",
+    ):
+        if not isinstance(background_agent.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_background_agent_boolean",
+                    f"`background_agent.{key}` must be a boolean.",
+                )
+            )
+
+    if background_agent.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "background_agent_demo_only_required",
+                "`background_agent.demo_only` must remain true in Phase 19.",
+            )
+        )
+
+    if background_agent.get("show_tray_notifications") is True:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "background_agent_notifications_disabled",
+                "`background_agent.show_tray_notifications` must remain false in Phase 19.",
+            )
+        )
+
     threat_levels = config.get("threat_levels", {})
     for key in ("enabled", "foundation_enabled", "demo_only"):
         if not isinstance(threat_levels.get(key), bool):

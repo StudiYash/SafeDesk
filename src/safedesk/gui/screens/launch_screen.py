@@ -22,12 +22,17 @@ class LaunchScreen(ctk.CTkFrame):
         on_open_admin_console: Callable[[], None],
         on_open_public_lock: Callable[[], None],
         on_exit: Callable[[], None],
+        on_minimize_to_tray: Callable[[], bool] | None = None,
+        tray_controls_enabled: bool = False,
     ):
         super().__init__(master, fg_color=ds.CONTENT_BG)
         self.context = context
         self.config = context.load_result.config
         self.admin_console_allowed = can_open_admin_console_from_launch(self.config)
         self.public_lock_allowed = can_open_public_lock_placeholder(self.config)
+        self.on_minimize_to_tray = on_minimize_to_tray
+        self.tray_controls_enabled = tray_controls_enabled
+        self.tray_status_label: ctk.CTkLabel | None = None
         self.logo_image: ctk.CTkImage | None = None
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -72,6 +77,32 @@ class LaunchScreen(ctk.CTkFrame):
             height=42,
             **ds.secondary_button_kwargs(),
         ).grid(row=0, column=2, padx=(ds.SPACE_SM, 0), sticky="ew")
+
+        if on_minimize_to_tray is not None:
+            tray_button = ctk.CTkButton(
+                actions,
+                text="Minimize to Tray",
+                command=self._handle_minimize_to_tray,
+                state="normal" if tray_controls_enabled else "disabled",
+                height=38,
+                **ds.secondary_button_kwargs(),
+            )
+            tray_button.grid(row=1, column=0, columnspan=3, padx=0, pady=(ds.SPACE_MD, 0), sticky="ew")
+            self.tray_status_label = ctk.CTkLabel(
+                actions,
+                text="",
+                font=ctk.CTkFont(size=ds.FONT_SMALL),
+                text_color=ds.TEXT_MUTED,
+            )
+            self.tray_status_label.grid(row=2, column=0, columnspan=3, padx=0, pady=(6, 0), sticky="ew")
+
+    def _handle_minimize_to_tray(self) -> None:
+        if self.on_minimize_to_tray is None:
+            return
+        if self.on_minimize_to_tray():
+            return
+        if self.tray_status_label is not None:
+            self.tray_status_label.configure(text="Tray support is unavailable.")
 
     def _build_logo_widget(self, master) -> ctk.CTkLabel:
         logo_path = project_root() / "SafeDesk Logo.png"

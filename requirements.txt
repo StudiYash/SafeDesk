@@ -6,6 +6,7 @@ pytest
 
 # GUI
 customtkinter
+pystray
 
 # Computer vision
 opencv-python

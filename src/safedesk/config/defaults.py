@@ -43,6 +43,16 @@ DEFAULT_CONFIG = {
         "max_attempts": 3,
         "lockout_seconds": 30,
     },
+    "background_agent": {
+        "enabled": True,
+        "foundation_enabled": True,
+        "demo_only": True,
+        "system_tray_enabled": True,
+        "minimize_to_tray": True,
+        "close_to_tray": False,
+        "allow_exit_from_tray": True,
+        "show_tray_notifications": False,
+    },
     "feature_flags": {
         "enable_real_email": False,
         "enable_real_shutdown": False,

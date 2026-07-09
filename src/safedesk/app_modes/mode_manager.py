@@ -9,26 +9,32 @@ ALLOWED_MODE_TRANSITIONS: dict[SafeDeskMode, tuple[SafeDeskMode, ...]] = {
         SafeDeskMode.LAUNCH,
         SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.PUBLIC_LOCK,
+        SafeDeskMode.BACKGROUND_AGENT,
     ),
     SafeDeskMode.ADMIN_GATE: (
         SafeDeskMode.LAUNCH,
         SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.ADMIN_CONSOLE,
         SafeDeskMode.PUBLIC_LOCK,
+        SafeDeskMode.BACKGROUND_AGENT,
     ),
     SafeDeskMode.ADMIN_CONSOLE: (
         SafeDeskMode.LAUNCH,
         SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.ADMIN_CONSOLE,
         SafeDeskMode.PUBLIC_LOCK,
+        SafeDeskMode.BACKGROUND_AGENT,
     ),
     SafeDeskMode.PUBLIC_LOCK: (
         SafeDeskMode.LAUNCH,
         SafeDeskMode.ADMIN_GATE,
         SafeDeskMode.PUBLIC_LOCK,
+        SafeDeskMode.BACKGROUND_AGENT,
     ),
     SafeDeskMode.BACKGROUND_AGENT: (
         SafeDeskMode.LAUNCH,
+        SafeDeskMode.ADMIN_GATE,
+        SafeDeskMode.PUBLIC_LOCK,
         SafeDeskMode.BACKGROUND_AGENT,
     ),
 }
