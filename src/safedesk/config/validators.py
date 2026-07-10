@@ -468,6 +468,67 @@ def validate_config(
             )
         )
 
+    lockdown_display = config.get("lockdown_display", {})
+    if not isinstance(lockdown_display, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_lockdown_display_section",
+                "`lockdown_display` must be a configuration object.",
+            )
+        )
+        lockdown_display = {}
+
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "fullscreen_enabled",
+        "multi_display_enabled",
+        "borderless_enabled",
+        "topmost_enabled",
+        "primary_display_required",
+        "fallback_to_primary_display",
+        "allow_development_escape",
+    ):
+        if not isinstance(lockdown_display.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_lockdown_display_boolean",
+                    f"`lockdown_display.{key}` must be a boolean.",
+                )
+            )
+
+    if lockdown_display.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "lockdown_display_demo_only_required",
+                "`lockdown_display.demo_only` must remain true in Phase 21.",
+            )
+        )
+
+    escape_timeout = lockdown_display.get("development_escape_timeout_seconds")
+    if isinstance(escape_timeout, bool) or not isinstance(escape_timeout, int) or not 5 <= escape_timeout <= 300:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_lockdown_display_escape_timeout",
+                "`lockdown_display.development_escape_timeout_seconds` must be an integer between 5 and 300.",
+            )
+        )
+
+    max_display_windows = lockdown_display.get("max_display_windows")
+    if isinstance(max_display_windows, bool) or not isinstance(max_display_windows, int) or not 1 <= max_display_windows <= 8:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_lockdown_display_max_windows",
+                "`lockdown_display.max_display_windows` must be an integer between 1 and 8.",
+            )
+        )
+
     threat_levels = config.get("threat_levels", {})
     for key in ("enabled", "foundation_enabled", "demo_only"):
         if not isinstance(threat_levels.get(key), bool):

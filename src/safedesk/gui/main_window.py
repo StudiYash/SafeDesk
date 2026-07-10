@@ -57,6 +57,8 @@ from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
 from safedesk.gui.screens.shutdown_escalation_screen import ShutdownEscalationScreen
 from safedesk.gui.screens.threat_level_demo_screen import ThreatLevelDemoScreen
 from safedesk.gui.theme import apply_theme
+from safedesk.lockdown_display import LockdownDisplayManager
+from safedesk.lockdown_display.dpi_awareness import enable_windows_dpi_awareness
 from safedesk.logging.event_logger import build_logger_from_config
 
 
@@ -64,6 +66,7 @@ class SafeDeskMainWindow(ctk.CTk):
     """Safe placeholder desktop shell for SafeDesk."""
 
     def __init__(self, context: RuntimeContext):
+        enable_windows_dpi_awareness()
         self.context = context
         self.config = context.load_result.config
         self.ui_config = self.config.get("ui", {})
@@ -77,6 +80,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self.tray_controller: TrayController | None = None
         self.global_shortcut_manager = GlobalShortcutManager(self.config)
         self.global_shortcut_controller: WindowsHotkeyController | None = None
+        self.lockdown_display_manager = LockdownDisplayManager(self.config)
         self._hidden_to_tray = False
         self._destroying = False
         apply_theme(self.ui_config)
@@ -264,6 +268,69 @@ class SafeDeskMainWindow(ctk.CTk):
                 {"tray_available": False, "tray_running": False},
             )
 
+    def _start_lockdown_display(self) -> None:
+        self._log_app_route_event(
+            "public_lock_fullscreen_requested",
+            "Fullscreen SafeDesk lockdown display was requested.",
+            {
+                "route": SafeDeskMode.PUBLIC_LOCK.value,
+                "current_mode": self.mode_manager.current_mode.value,
+                "fullscreen_enabled": self.lockdown_display_manager.fullscreen_enabled,
+                "multi_display_enabled": self.lockdown_display_manager.multi_display_enabled,
+            },
+        )
+        result = self.lockdown_display_manager.start(
+            self,
+            self.context,
+            on_development_escape=self._handle_lockdown_development_escape,
+        )
+        metadata = {
+            "display_count": result.display_count,
+            "window_count": result.window_count,
+            "fullscreen_enabled": self.lockdown_display_manager.fullscreen_enabled,
+            "multi_display_enabled": self.lockdown_display_manager.multi_display_enabled,
+            "fallback_used": result.fallback_used,
+            "active": self.lockdown_display_manager.active,
+            "result_status": result.status,
+        }
+        if result.status == "already_active":
+            self._log_app_route_event("lockdown_display_already_active", "Lockdown display is already active.", metadata)
+        elif result.success:
+            if result.fallback_used:
+                self._log_app_route_event("lockdown_display_primary_fallback_used", "Primary display fallback was used.", metadata)
+            self._log_app_route_event("lockdown_display_started", "Lockdown display windows started.", metadata)
+        else:
+            self._log_app_route_event("lockdown_display_unavailable", "Lockdown display windows are unavailable.", metadata)
+
+    def _stop_lockdown_display(self) -> None:
+        if not self.lockdown_display_manager.active:
+            return
+        status = self.lockdown_display_manager.build_status()
+        self._log_app_route_event(
+            "lockdown_display_cleanup_requested",
+            "Lockdown display cleanup was requested.",
+            {
+                "display_count": status.display_count,
+                "window_count": status.window_count,
+                "active": status.active,
+            },
+        )
+        result = self.lockdown_display_manager.stop()
+        self._log_app_route_event(
+            "lockdown_display_stopped",
+            "Lockdown display windows stopped.",
+            {
+                "display_count": result.display_count,
+                "window_count": result.window_count,
+                "fallback_used": result.fallback_used,
+                "result_status": result.status,
+            },
+        )
+
+    def _handle_lockdown_development_escape(self) -> None:
+        self._log_app_route_event("lockdown_display_development_escape_used", "Lockdown display development escape was used.")
+        self.show_launch_screen()
+
     def _start_global_shortcut_if_configured(self) -> None:
         if not self.global_shortcut_manager.should_attempt_registration():
             status = self.global_shortcut_manager.build_status()
@@ -443,6 +510,7 @@ class SafeDeskMainWindow(ctk.CTk):
 
     def exit_from_tray(self) -> None:
         self._log_app_route_event("tray_exit_requested", "Tray requested SafeDesk exit.")
+        self._stop_lockdown_display()
         if self.tray_controller is not None:
             self.tray_controller.stop()
         self._stop_global_shortcut()
@@ -458,6 +526,7 @@ class SafeDeskMainWindow(ctk.CTk):
             button.set_active(name == screen_name)
 
     def show_launch_screen(self) -> None:
+        self._stop_lockdown_display()
         self.mode_manager.transition_to(SafeDeskMode.LAUNCH)
         self._clear_current_screen()
         self._show_route_layout()
@@ -478,6 +547,7 @@ class SafeDeskMainWindow(ctk.CTk):
         return self.admin_gate_config.get("enabled", True) is True and self.admin_gate_config.get("foundation_enabled", True) is True
 
     def show_admin_gate(self, initial_screen: str = HOME) -> None:
+        self._stop_lockdown_display()
         if not self._admin_gate_enabled():
             self._log_app_route_event(
                 "admin_gate_bypassed_by_config",
@@ -525,6 +595,9 @@ class SafeDeskMainWindow(ctk.CTk):
         if not self.public_lock_placeholder_allowed:
             self._log_app_route_event("public_lock_placeholder_blocked", "SafeDesk public lock placeholder is disabled by configuration.")
             return
+        if self.mode_manager.current_mode == SafeDeskMode.PUBLIC_LOCK and self.lockdown_display_manager.active:
+            self._start_lockdown_display()
+            return
         self.mode_manager.transition_to(SafeDeskMode.PUBLIC_LOCK)
         self._clear_current_screen()
         self._show_route_layout()
@@ -536,6 +609,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self.current_screen.grid(row=0, column=0, sticky="nsew")
         self._log_app_route_event("lock_safedesk_placeholder_requested", "SafeDesk lock placeholder was requested manually.")
         self._log_app_route_event("public_lock_placeholder_opened", "SafeDesk public lock placeholder opened.")
+        self._start_lockdown_display()
 
     def show_screen(self, screen_name: str) -> None:
         if self.mode_manager.current_mode != SafeDeskMode.ADMIN_CONSOLE:
@@ -562,6 +636,7 @@ class SafeDeskMainWindow(ctk.CTk):
         if self._destroying:
             return
         self._destroying = True
+        self._stop_lockdown_display()
         self._release_current_screen_resources()
         self._stop_global_shortcut()
         if self.tray_controller is not None:

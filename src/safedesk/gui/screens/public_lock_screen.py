@@ -49,11 +49,26 @@ RECOVERY_STATUS_TEXT = "RECOVERY ACCESS REQUEST RECEIVED."
 class PublicLockScreen(ctk.CTkFrame):
     """Public-facing non-enforcing SafeDesk lock screen."""
 
-    def __init__(self, master, context: RuntimeContext):
-        super().__init__(master, fg_color=ds.SAFEDESK_BLACK)
+    def __init__(
+        self,
+        master,
+        context: RuntimeContext,
+        *,
+        forced_width: int | None = None,
+        forced_height: int | None = None,
+    ):
+        frame_kwargs: dict[str, Any] = {"fg_color": ds.SAFEDESK_BLACK}
+        if forced_width is not None:
+            frame_kwargs["width"] = max(1, int(forced_width))
+        if forced_height is not None:
+            frame_kwargs["height"] = max(1, int(forced_height))
+        super().__init__(master, **frame_kwargs)
         self.context = context
+        self.forced_width = max(1, int(forced_width)) if forced_width is not None else None
+        self.forced_height = max(1, int(forced_height)) if forced_height is not None else None
         self.event_logger = build_logger_from_config(context.load_result.config)
         self.template_source_image: Any | None = self._load_template_image()
+        self.template_rendered_image: Any | None = None
         self.template_photo_image: Any | None = None
         self.template_canvas: tk.Canvas | None = None
         self.template_image_item: int | None = None
@@ -69,6 +84,9 @@ class PublicLockScreen(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
+        if self.forced_width is not None and self.forced_height is not None:
+            self.configure(width=self.forced_width, height=self.forced_height)
+            self.grid_propagate(False)
 
         if self.template_source_image is None:
             self._build_fallback_layout()
@@ -184,8 +202,7 @@ class PublicLockScreen(ctk.CTkFrame):
         if self.template_source_image is None or self.template_canvas is None or self.template_image_item is None:
             return
 
-        frame_width = max(1, self.winfo_width())
-        frame_height = max(1, self.winfo_height())
+        frame_width, frame_height = self._render_size()
         if frame_width < 50 or frame_height < 50:
             self.after(50, self._update_template_layout)
             return
@@ -203,8 +220,9 @@ class PublicLockScreen(ctk.CTkFrame):
             from PIL import Image, ImageTk
 
             resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BICUBIC)
-            resized = self.template_source_image.resize((display_width, display_height), resample=resample)
-            self.template_photo_image = ImageTk.PhotoImage(resized)
+            self.template_rendered_image = self.template_source_image.resize((display_width, display_height), resample=resample)
+            self.template_photo_image = ImageTk.PhotoImage(self.template_rendered_image, master=self.winfo_toplevel())
+            self.template_canvas._safedesk_template_photo_image = self.template_photo_image
             self.template_canvas.itemconfigure(self.template_image_item, image=self.template_photo_image)
             self._last_display_size = (display_width, display_height)
 
@@ -253,6 +271,11 @@ class PublicLockScreen(ctk.CTkFrame):
             BUTTON_HIT_VERTICAL_PADDING_RATIO,
         )
         self._raise_canvas_text_items()
+
+    def _render_size(self) -> tuple[int, int]:
+        if self.forced_width is not None and self.forced_height is not None:
+            return self.forced_width, self.forced_height
+        return max(1, self.winfo_width()), max(1, self.winfo_height())
 
     def _place_text_item(
         self,
@@ -355,25 +378,35 @@ class PublicLockScreen(ctk.CTkFrame):
         return max(minimum, min(maximum, value))
 
     def _handle_verify_owner(self) -> None:
-        self._set_status_message(VERIFY_STATUS_TEXT)
+        self.set_status_message(VERIFY_STATUS_TEXT)
         self._log_public_lock_action(
             "public_lock_verify_owner_requested",
             "Owner verification was requested from the public lock screen.",
         )
 
     def _handle_recovery_access(self) -> None:
-        self._set_status_message(RECOVERY_STATUS_TEXT)
+        self.set_status_message(RECOVERY_STATUS_TEXT)
         self._log_public_lock_action(
             "public_lock_recovery_access_requested",
             "Recovery access was requested from the public lock screen.",
         )
 
-    def _set_status_message(self, message: str) -> None:
+    def set_status_message(self, message: str) -> None:
         self._status_text = message
+        self._refresh_status_text_only()
+
+    def _refresh_status_text_only(self) -> None:
         if self.template_canvas is not None and self.status_text_item is not None:
-            self.template_canvas.itemconfigure(self.status_text_item, text=message)
+            try:
+                self.template_canvas.itemconfigure(self.status_text_item, text=self._status_text)
+                self._raise_canvas_text_items()
+            except Exception:
+                pass
         if self.fallback_status_message is not None:
-            self.fallback_status_message.configure(text=message)
+            try:
+                self.fallback_status_message.configure(text=self._status_text)
+            except Exception:
+                pass
 
     def _log_public_lock_action(self, action: str, message: str) -> None:
         try:

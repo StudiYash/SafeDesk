@@ -63,6 +63,20 @@
       "Windows"
     ]
   },
+  "lockdown_display": {
+    "enabled": true,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "fullscreen_enabled": true,
+    "multi_display_enabled": true,
+    "borderless_enabled": true,
+    "topmost_enabled": true,
+    "primary_display_required": true,
+    "fallback_to_primary_display": true,
+    "allow_development_escape": true,
+    "development_escape_timeout_seconds": 30,
+    "max_display_windows": 6
+  },
   "feature_flags": {
     "enable_real_email": false,
     "enable_real_shutdown": false,
