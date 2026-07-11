@@ -70,6 +70,36 @@ class BlackoutDisplayWindow:
         except Exception:
             pass
 
+    def is_active(self) -> bool:
+        if self.window is None:
+            return False
+        try:
+            return bool(self.window.winfo_exists())
+        except Exception:
+            return False
+
+    def recover_visual_priority(
+        self,
+        *,
+        focus_primary: bool = False,
+        lift_window: bool = True,
+        reapply_topmost: bool = True,
+    ) -> bool:
+        del focus_primary
+        if not self.is_active() or self.window is None:
+            return False
+        if lift_window:
+            try:
+                self.window.lift()
+            except Exception:
+                pass
+        if reapply_topmost and self.display_config.get("topmost_enabled", True) is True:
+            try:
+                self.window.attributes("-topmost", True)
+            except Exception:
+                pass
+        return True
+
     def _apply_window_attributes(self) -> None:
         if self.window is None:
             return

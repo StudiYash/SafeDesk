@@ -67,6 +67,36 @@ class LockdownDisplayManager:
     def active(self) -> bool:
         return bool(self.windows)
 
+    def get_active_windows(self) -> tuple[Any, ...]:
+        """Return currently tracked lockdown display windows."""
+
+        return tuple(self.windows)
+
+    def recover_visual_priority(
+        self,
+        *,
+        focus_primary: bool = False,
+        lift_windows: bool = True,
+        reapply_topmost: bool = True,
+    ) -> int:
+        """Ask tracked windows to safely restore visual priority."""
+
+        recovered = 0
+        for index, window in enumerate(tuple(self.windows)):
+            recover = getattr(window, "recover_visual_priority", None)
+            if not callable(recover):
+                continue
+            try:
+                if recover(
+                    focus_primary=bool(focus_primary and index == 0),
+                    lift_window=lift_windows,
+                    reapply_topmost=reapply_topmost,
+                ):
+                    recovered += 1
+            except Exception:
+                continue
+        return recovered
+
     def build_status(self) -> LockdownDisplayStatus:
         """Build a safe status summary."""
 

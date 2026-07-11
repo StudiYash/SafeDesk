@@ -529,6 +529,58 @@ def validate_config(
             )
         )
 
+    safe_interaction_lock = config.get("safe_interaction_lock", {})
+    if not isinstance(safe_interaction_lock, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_safe_interaction_lock_section",
+                "`safe_interaction_lock` must be a configuration object.",
+            )
+        )
+        safe_interaction_lock = {}
+
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "focus_recovery_enabled",
+        "lift_windows_on_recovery",
+        "reapply_topmost_on_recovery",
+        "focus_primary_on_activation",
+        "focus_primary_on_recovery",
+        "cleanup_on_route_change",
+        "prevent_duplicate_activation",
+        "log_lifecycle_events",
+    ):
+        if not isinstance(safe_interaction_lock.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_safe_interaction_lock_boolean",
+                    f"`safe_interaction_lock.{key}` must be a boolean.",
+                )
+            )
+
+    if safe_interaction_lock.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "safe_interaction_lock_demo_only_required",
+                "`safe_interaction_lock.demo_only` must remain true in Phase 22.",
+            )
+        )
+
+    recovery_interval = safe_interaction_lock.get("focus_recovery_interval_seconds")
+    if isinstance(recovery_interval, bool) or not isinstance(recovery_interval, (int, float)) or not 1 <= float(recovery_interval) <= 10:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_safe_interaction_lock_interval",
+                "`safe_interaction_lock.focus_recovery_interval_seconds` must be a number between 1 and 10.",
+            )
+        )
+
     threat_levels = config.get("threat_levels", {})
     for key in ("enabled", "foundation_enabled", "demo_only"):
         if not isinstance(threat_levels.get(key), bool):

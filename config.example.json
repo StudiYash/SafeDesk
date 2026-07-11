@@ -77,6 +77,20 @@
     "development_escape_timeout_seconds": 30,
     "max_display_windows": 6
   },
+  "safe_interaction_lock": {
+    "enabled": true,
+    "foundation_enabled": true,
+    "demo_only": true,
+    "focus_recovery_enabled": true,
+    "focus_recovery_interval_seconds": 2,
+    "lift_windows_on_recovery": true,
+    "reapply_topmost_on_recovery": true,
+    "focus_primary_on_activation": true,
+    "focus_primary_on_recovery": false,
+    "cleanup_on_route_change": true,
+    "prevent_duplicate_activation": true,
+    "log_lifecycle_events": true
+  },
   "feature_flags": {
     "enable_real_email": false,
     "enable_real_shutdown": false,

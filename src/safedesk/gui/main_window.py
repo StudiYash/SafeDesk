@@ -57,6 +57,7 @@ from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
 from safedesk.gui.screens.shutdown_escalation_screen import ShutdownEscalationScreen
 from safedesk.gui.screens.threat_level_demo_screen import ThreatLevelDemoScreen
 from safedesk.gui.theme import apply_theme
+from safedesk.interaction_lock import SafeInteractionLockManager
 from safedesk.lockdown_display import LockdownDisplayManager
 from safedesk.lockdown_display.dpi_awareness import enable_windows_dpi_awareness
 from safedesk.logging.event_logger import build_logger_from_config
@@ -81,6 +82,11 @@ class SafeDeskMainWindow(ctk.CTk):
         self.global_shortcut_manager = GlobalShortcutManager(self.config)
         self.global_shortcut_controller: WindowsHotkeyController | None = None
         self.lockdown_display_manager = LockdownDisplayManager(self.config)
+        self.safe_interaction_lock_manager = SafeInteractionLockManager(
+            self.config,
+            window_provider=self.lockdown_display_manager.get_active_windows,
+            event_callback=self._log_safe_interaction_lock_event,
+        )
         self._hidden_to_tray = False
         self._destroying = False
         apply_theme(self.ui_config)
@@ -242,6 +248,9 @@ class SafeDeskMainWindow(ctk.CTk):
         except Exception:
             pass
 
+    def _log_safe_interaction_lock_event(self, action: str, message: str, metadata: dict) -> None:
+        self._log_app_route_event(action, message, metadata)
+
     def _start_background_agent_if_configured(self) -> None:
         if not self.background_agent_manager.should_attempt_tray():
             return
@@ -302,7 +311,34 @@ class SafeDeskMainWindow(ctk.CTk):
         else:
             self._log_app_route_event("lockdown_display_unavailable", "Lockdown display windows are unavailable.", metadata)
 
+        if result.success and self.lockdown_display_manager.active:
+            self._start_safe_interaction_lock()
+
+    def _start_safe_interaction_lock(self) -> None:
+        result = self.safe_interaction_lock_manager.start(
+            self,
+            window_provider=self.lockdown_display_manager.get_active_windows,
+        )
+        if not result.success or not self.safe_interaction_lock_manager.active:
+            return
+        focus_primary = self.safe_interaction_lock_manager.focus_primary_on_activation
+        self._log_app_route_event(
+            "lockdown_visual_recovery_requested",
+            "SafeDesk lockdown visual recovery was requested.",
+            {
+                "window_count": result.window_count,
+                "focus_primary": focus_primary,
+                "result_status": result.status,
+            },
+        )
+        self.safe_interaction_lock_manager.recover_once(focus_primary=focus_primary)
+
+    def _stop_safe_interaction_lock(self) -> None:
+        if self.safe_interaction_lock_manager.active:
+            self.safe_interaction_lock_manager.stop()
+
     def _stop_lockdown_display(self) -> None:
+        self._stop_safe_interaction_lock()
         if not self.lockdown_display_manager.active:
             return
         status = self.lockdown_display_manager.build_status()

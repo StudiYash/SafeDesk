@@ -16,6 +16,8 @@ def test_main_window_owns_lockdown_display_manager_and_stops_on_destroy():
 
     assert "LockdownDisplayManager" in source
     assert "self.lockdown_display_manager = LockdownDisplayManager" in source
+    assert "SafeInteractionLockManager" in source
+    assert "self.safe_interaction_lock_manager = SafeInteractionLockManager" in source
     assert "_stop_lockdown_display" in source
     assert "self._stop_lockdown_display()" in source
 
@@ -27,6 +29,8 @@ def test_show_public_lock_screen_starts_lockdown_display():
     assert "self._start_lockdown_display()" in public_lock_source
     assert "PublicLockScreen" in public_lock_source
     assert "lockdown_display_already_active" in source
+    assert "self._start_safe_interaction_lock()" in source
+    assert "lockdown_visual_recovery_requested" in source
 
 
 def test_tray_and_shortcut_still_route_to_public_lock_screen():
@@ -46,6 +50,18 @@ def test_returning_to_launch_or_admin_gate_cleans_up_lockdown_windows():
 
     assert "self._stop_lockdown_display()" in launch_source
     assert "self._stop_lockdown_display()" in gate_source
+    assert "def _stop_safe_interaction_lock" in source
+    assert "self.safe_interaction_lock_manager.stop()" in source
+
+
+def test_main_window_tray_exit_and_destroy_stop_interaction_lock():
+    source = _main_window_source()
+    exit_source = source.split("def exit_from_tray", 1)[1].split("def _handle_window_close", 1)[0]
+    destroy_source = source.split("def destroy", 1)[1]
+
+    assert "self._stop_lockdown_display()" in exit_source
+    assert "self._stop_lockdown_display()" in destroy_source
+    assert "self._stop_safe_interaction_lock()" in source
 
 
 def test_public_lock_screen_still_has_no_visible_admin_return_controls():

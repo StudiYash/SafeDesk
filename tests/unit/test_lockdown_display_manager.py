@@ -27,6 +27,8 @@ class FakeInteractiveWindow:
         self.display = display
         self.shown = False
         self.destroyed = False
+        self.recovered = 0
+        self.focus_requests = []
         FakeInteractiveWindow.created.append(self)
 
     def show(self):
@@ -34,6 +36,12 @@ class FakeInteractiveWindow:
 
     def destroy(self):
         self.destroyed = True
+
+    def recover_visual_priority(self, *, focus_primary=False, lift_window=True, reapply_topmost=True):
+        del lift_window, reapply_topmost
+        self.recovered += 1
+        self.focus_requests.append(focus_primary)
+        return True
 
 
 class FakeBlackoutWindow:
@@ -43,6 +51,8 @@ class FakeBlackoutWindow:
         self.display = display
         self.shown = False
         self.destroyed = False
+        self.recovered = 0
+        self.focus_requests = []
         FakeBlackoutWindow.created.append(self)
 
     def show(self):
@@ -50,6 +60,12 @@ class FakeBlackoutWindow:
 
     def destroy(self):
         self.destroyed = True
+
+    def recover_visual_priority(self, *, focus_primary=False, lift_window=True, reapply_topmost=True):
+        del lift_window, reapply_topmost
+        self.recovered += 1
+        self.focus_requests.append(focus_primary)
+        return True
 
 
 def _manager(config=None, display_provider=None, primary_window_factory=FakeInteractiveWindow, blackout_window_factory=FakeBlackoutWindow):
@@ -222,6 +238,24 @@ def test_start_creates_windows_and_duplicate_start_is_already_active():
     assert FakeBlackoutWindow.created[0].display == displays[1]
     assert FakeInteractiveWindow.created[0].shown is True
     assert FakeBlackoutWindow.created[0].shown is True
+
+
+def test_get_active_windows_and_recover_visual_priority_use_existing_windows():
+    displays = (
+        DisplayBounds(index=0, x=0, y=0, width=100, height=100, primary=True),
+        DisplayBounds(index=1, x=100, y=0, width=100, height=100, primary=False),
+    )
+    manager = _manager(display_provider=lambda: displays)
+
+    manager.start(FakeRoot(), object())
+    recovered = manager.recover_visual_priority(focus_primary=True)
+
+    assert manager.get_active_windows() == tuple(FakeInteractiveWindow.created + FakeBlackoutWindow.created)
+    assert recovered == 2
+    assert FakeInteractiveWindow.created[0].recovered == 1
+    assert FakeInteractiveWindow.created[0].focus_requests == [True]
+    assert FakeBlackoutWindow.created[0].recovered == 1
+    assert FakeBlackoutWindow.created[0].focus_requests == [False]
 
 
 def test_single_display_creates_only_primary_interactive_window():

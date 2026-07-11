@@ -77,7 +77,6 @@ class LockdownFullscreenWindow:
         self.window.bind("<Control-Shift-Q>", self._handle_development_escape)
         self.window.bind("<Escape>", self._handle_development_escape)
         self.window.deiconify()
-        self.window.focus_force()
 
     def destroy(self) -> None:
         """Destroy this lockdown display window safely."""
@@ -91,6 +90,44 @@ class LockdownFullscreenWindow:
             window.destroy()
         except Exception:
             pass
+
+    def is_active(self) -> bool:
+        """Return whether the top-level lockdown window still exists."""
+
+        if self.window is None:
+            return False
+        try:
+            return bool(self.window.winfo_exists())
+        except Exception:
+            return False
+
+    def recover_visual_priority(
+        self,
+        *,
+        focus_primary: bool = False,
+        lift_window: bool = True,
+        reapply_topmost: bool = True,
+    ) -> bool:
+        """Safely restore visual priority for the primary lockdown window."""
+
+        if not self.is_active() or self.window is None:
+            return False
+        if lift_window:
+            try:
+                self.window.lift()
+            except Exception:
+                pass
+        if reapply_topmost and self.display_config.get("topmost_enabled", True) is True:
+            try:
+                self.window.attributes("-topmost", True)
+            except Exception:
+                pass
+        if focus_primary:
+            try:
+                self.window.focus_force()
+            except Exception:
+                pass
+        return True
 
     def _apply_window_attributes(self) -> None:
         if self.window is None:

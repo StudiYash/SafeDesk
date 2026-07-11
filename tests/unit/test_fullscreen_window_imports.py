@@ -50,6 +50,20 @@ def test_fullscreen_window_source_has_development_escape_without_visible_return_
     assert "Developer Return" not in source
 
 
+def test_fullscreen_window_has_safe_visual_recovery_methods():
+    source = (SRC / "safedesk" / "lockdown_display" / "fullscreen_window.py").read_text(encoding="utf-8")
+    recovery_source = source.split("def recover_visual_priority", 1)[1].split("def _apply_window_attributes", 1)[0]
+
+    assert "def is_active" in source
+    assert "def recover_visual_priority" in source
+    assert ".lift()" in recovery_source
+    assert "attributes(\"-topmost\", True)" in recovery_source
+    assert ".focus_force()" in recovery_source
+    assert "update()" not in recovery_source
+    assert "update_idletasks" not in recovery_source
+    assert "-fullscreen" not in recovery_source
+
+
 def test_lockdown_display_source_does_not_include_input_blocking_hooks_or_shutdown():
     combined = "\n".join(
         path.read_text(encoding="utf-8")
