@@ -17,6 +17,7 @@ from safedesk.gui.navigation import (
     FACE_RECOGNITION_DEMO,
     HOME,
     INTRUDER_DETECTION_DEMO,
+    INTRUDER_HISTORY,
     LAUNCH,
     LIVENESS_DEMO,
     OWNER_FACE_REGISTRATION,
@@ -49,6 +50,7 @@ def test_navigation_metadata_contains_expected_screens():
         OTP_EMAIL_SETUP,
         EVENT_LOGS,
         INTRUDER_DETECTION_DEMO,
+        INTRUDER_HISTORY,
         THREAT_LEVEL_DEMO,
         PROTECTED_MODE_PREVIEW,
         SHUTDOWN_ESCALATION,
@@ -70,6 +72,7 @@ def test_gui_modules_import_without_opening_window():
     from safedesk.gui.screens.launch_screen import LaunchScreen
     from safedesk.gui.screens.public_lock_screen import PublicLockScreen
     from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
+    from safedesk.gui.screens.intruder_history_screen import IntruderHistoryScreen
 
     assert safedesk.gui.main_window.SafeDeskMainWindow is not None
     assert safedesk.gui.theme.apply_theme is not None
@@ -82,3 +85,4 @@ def test_gui_modules_import_without_opening_window():
     assert LaunchScreen is not None
     assert PublicLockScreen is not None
     assert AdminGateScreen is not None
+    assert IntruderHistoryScreen is not None

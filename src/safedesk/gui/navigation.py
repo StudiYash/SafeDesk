@@ -18,6 +18,7 @@ AUTHENTICATION_SETUP = "authentication_setup"
 OTP_EMAIL_SETUP = "otp_email_setup"
 EVENT_LOGS = "event_logs"
 INTRUDER_DETECTION_DEMO = "intruder_detection_demo"
+INTRUDER_HISTORY = "intruder_history"
 THREAT_LEVEL_DEMO = "threat_level_demo"
 PROTECTED_MODE_PREVIEW = "protected_mode_preview"
 SHUTDOWN_ESCALATION = "shutdown_escalation"
@@ -44,10 +45,11 @@ SCREEN_DEFINITIONS = (
     ScreenDefinition(OTP_EMAIL_SETUP, "OTP & Email Setup", "Manual OTP and email foundation."),
     ScreenDefinition(EVENT_LOGS, "Event Logs", "Local SQLite event log dashboard."),
     ScreenDefinition(INTRUDER_DETECTION_DEMO, "Intruder Detection Demo", "Manual unknown/unverified evidence capture foundation."),
+    ScreenDefinition(INTRUDER_HISTORY, "Intruder History", "Owner-only local intruder evidence review."),
     ScreenDefinition(THREAT_LEVEL_DEMO, "Threat Level Demo", "Manual threat-level simulation foundation."),
     ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Mode Demo", "Safe protected-mode foundation simulator."),
     ScreenDefinition(SHUTDOWN_ESCALATION, "Shutdown Escalation Demo", "Dry-run shutdown escalation foundation."),
-    ScreenDefinition(DASHBOARD, "Dashboard", "Future intruder history and logs placeholder."),
+    ScreenDefinition(DASHBOARD, "Dashboard", "Owner-only SafeDesk status and recent activity overview."),
     ScreenDefinition(SETTINGS, "Settings", "Future settings placeholder."),
     ScreenDefinition(ABOUT, "About", "Project information."),
 )

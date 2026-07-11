@@ -26,6 +26,7 @@ from safedesk.gui.navigation import (
     FACE_RECOGNITION_DEMO,
     HOME,
     INTRUDER_DETECTION_DEMO,
+    INTRUDER_HISTORY,
     LIVENESS_DEMO,
     OWNER_FACE_REGISTRATION,
     OTP_EMAIL_SETUP,
@@ -44,6 +45,7 @@ from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlacehold
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
 from safedesk.gui.screens.home_screen import HomeScreen
 from safedesk.gui.screens.intruder_detection_demo_screen import IntruderDetectionDemoScreen
+from safedesk.gui.screens.intruder_history_screen import IntruderHistoryScreen
 from safedesk.gui.screens.launch_screen import LaunchScreen
 from safedesk.gui.screens.liveness_demo_screen import LivenessDemoScreen
 from safedesk.gui.screens.logging_dashboard_screen import LoggingDashboardScreen
@@ -130,6 +132,7 @@ class SafeDeskMainWindow(ctk.CTk):
             OTP_EMAIL_SETUP: OtpEmailSetupScreen,
             EVENT_LOGS: LoggingDashboardScreen,
             INTRUDER_DETECTION_DEMO: IntruderDetectionDemoScreen,
+            INTRUDER_HISTORY: IntruderHistoryScreen,
             THREAT_LEVEL_DEMO: ThreatLevelDemoScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             SHUTDOWN_ESCALATION: ShutdownEscalationScreen,
