@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from safedesk.config.models import (
@@ -130,6 +130,15 @@ def _relative_path_issue(section: str, key: str, value: Any) -> ConfigValidation
             f"`{section}.{key}` must remain relative to the SafeDesk project root.",
         )
     return None
+
+
+def _is_absolute_path_text(value: str) -> bool:
+    normalized = value.replace("\\", "/")
+    return Path(normalized).is_absolute() or PureWindowsPath(value).is_absolute() or normalized.startswith("//")
+
+
+def _relative_parts(value: str) -> tuple[str, ...]:
+    return tuple(part for part in value.replace("\\", "/").split("/") if part not in {"", "."})
 
 
 def _effective_flags(config: dict[str, Any], env: EnvironmentSettings) -> tuple[bool, bool, bool]:
@@ -581,6 +590,112 @@ def validate_config(
             )
         )
 
+    alarm = config.get("alarm", {})
+    if not isinstance(alarm, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_alarm_section",
+                "`alarm` must be a configuration object.",
+            )
+        )
+        alarm = {}
+
+    for key in (
+        "enabled",
+        "foundation_enabled",
+        "demo_only",
+        "manual_preview_enabled",
+        "automatic_trigger_enabled",
+        "allow_looping",
+        "beep_fallback_enabled",
+    ):
+        if not isinstance(alarm.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_alarm_boolean",
+                    f"`alarm.{key}` must be a boolean.",
+                )
+            )
+
+    for key, required_value, code, message in (
+        ("enabled", False, "alarm_real_enablement_disabled", "`alarm.enabled` must remain false in Phase 24."),
+        ("demo_only", True, "alarm_demo_only_required", "`alarm.demo_only` must remain true in Phase 24."),
+        (
+            "automatic_trigger_enabled",
+            False,
+            "alarm_automatic_trigger_disabled",
+            "`alarm.automatic_trigger_enabled` must remain false in Phase 24.",
+        ),
+        ("allow_looping", False, "alarm_looping_disabled", "`alarm.allow_looping` must remain false in Phase 24."),
+    ):
+        if alarm.get(key) is not required_value:
+            issues.append(ConfigValidationIssue("error", code, message))
+
+    preview_duration = alarm.get("max_preview_duration_seconds")
+    if isinstance(preview_duration, bool) or not isinstance(preview_duration, int) or not 1 <= preview_duration <= 10:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_alarm_preview_duration",
+                "`alarm.max_preview_duration_seconds` must be an integer between 1 and 10.",
+            )
+        )
+
+    volume_issue = _number_range_issue("alarm", "volume", alarm.get("volume"), 0.0, 1.0)
+    if volume_issue:
+        issues.append(volume_issue)
+
+    allowed_audio_dir = alarm.get("allowed_audio_dir")
+    if not isinstance(allowed_audio_dir, str) or not allowed_audio_dir.strip():
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_alarm_audio_directory",
+                "`alarm.allowed_audio_dir` must be a non-empty relative directory.",
+            )
+        )
+    elif (
+        _is_absolute_path_text(allowed_audio_dir)
+        or ".." in _relative_parts(allowed_audio_dir)
+        or not _relative_parts(allowed_audio_dir)
+    ):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "unsafe_alarm_audio_directory",
+                "`alarm.allowed_audio_dir` must remain a relative directory without traversal.",
+            )
+        )
+
+    audio_file = alarm.get("audio_file")
+    if not isinstance(audio_file, str):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_alarm_audio_file",
+                "`alarm.audio_file` must be a string.",
+            )
+        )
+    elif audio_file.strip():
+        audio_parts = _relative_parts(audio_file)
+        if _is_absolute_path_text(audio_file) or ".." in audio_parts:
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "unsafe_alarm_audio_file",
+                    "`alarm.audio_file` must remain beneath the configured audio directory.",
+                )
+            )
+        elif Path(audio_file.replace("\\", "/")).suffix.lower() != ".wav":
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "unsupported_alarm_audio_file",
+                    "`alarm.audio_file` must use the .wav extension.",
+                )
+            )
     threat_levels = config.get("threat_levels", {})
     for key in ("enabled", "foundation_enabled", "demo_only"):
         if not isinstance(threat_levels.get(key), bool):

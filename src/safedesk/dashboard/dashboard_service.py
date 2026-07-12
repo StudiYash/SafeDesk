@@ -117,6 +117,7 @@ class DashboardService:
         threat_config = self.config.get("threat_levels", {})
         protected_config = self.config.get("protected_mode", {})
         shutdown_config = self.config.get("shutdown", {})
+        alarm_config = self.config.get("alarm", {})
 
         threat_path = self._resolve_path(threat_config.get("state_path", "data/config/threat_state.json"))
         protected_path = self._resolve_path(protected_config.get("state_path", "data/config/protected_mode_state.json"))
@@ -151,6 +152,10 @@ class DashboardService:
                 DashboardRow("Threat state", threat_value),
                 DashboardRow("Protected mode", protected_value),
                 DashboardRow("Shutdown escalation", shutdown_value),
+                DashboardRow("Alarm foundation", self._enabled_disabled(alarm_config.get("foundation_enabled", True))),
+                DashboardRow("Manual alarm preview", self._enabled_disabled(alarm_config.get("manual_preview_enabled", True))),
+                DashboardRow("Automatic alarm trigger", self._enabled_disabled(alarm_config.get("automatic_trigger_enabled", False))),
+                DashboardRow("Alarm looping", self._enabled_disabled(alarm_config.get("allow_looping", False))),
             ),
         )
 

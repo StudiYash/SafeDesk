@@ -20,6 +20,7 @@ from safedesk.gui import design_system as ds
 from safedesk.gui.components.sidebar_button import SidebarButton
 from safedesk.gui.navigation import (
     ABOUT,
+    ALARM_SYSTEM,
     AUTHENTICATION_SETUP,
     DASHBOARD,
     EVENT_LOGS,
@@ -40,6 +41,7 @@ from safedesk.gui.navigation import (
 )
 from safedesk.gui.screens.about_screen import AboutScreen
 from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
+from safedesk.gui.screens.alarm_system_screen import AlarmSystemScreen
 from safedesk.gui.screens.authentication_setup_screen import AuthenticationSetupScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
@@ -136,6 +138,7 @@ class SafeDeskMainWindow(ctk.CTk):
             THREAT_LEVEL_DEMO: ThreatLevelDemoScreen,
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             SHUTDOWN_ESCALATION: ShutdownEscalationScreen,
+            ALARM_SYSTEM: AlarmSystemScreen,
             DASHBOARD: DashboardPlaceholderScreen,
             SETTINGS: SettingsPlaceholderScreen,
             ABOUT: AboutScreen,

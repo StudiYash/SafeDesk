@@ -241,8 +241,16 @@
   },
   "alarm": {
     "enabled": false,
-    "volume": 0.5,
-    "audio_file": ""
+    "foundation_enabled": true,
+    "demo_only": true,
+    "manual_preview_enabled": true,
+    "automatic_trigger_enabled": false,
+    "allow_looping": false,
+    "max_preview_duration_seconds": 5,
+    "beep_fallback_enabled": true,
+    "audio_file": "preview.wav",
+    "allowed_audio_dir": "assets/audio",
+    "volume": 0.5
   },
   "logging": {
     "enabled": true,

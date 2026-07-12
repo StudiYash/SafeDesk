@@ -8,6 +8,7 @@ if str(SRC) not in sys.path:
 
 from safedesk.gui.navigation import (
     ABOUT,
+    ALARM_SYSTEM,
     ADMIN_CONSOLE,
     ADMIN_GATE,
     AUTHENTICATION_SETUP,
@@ -54,6 +55,7 @@ def test_navigation_metadata_contains_expected_screens():
         THREAT_LEVEL_DEMO,
         PROTECTED_MODE_PREVIEW,
         SHUTDOWN_ESCALATION,
+        ALARM_SYSTEM,
         DASHBOARD,
         SETTINGS,
         ABOUT,
@@ -72,6 +74,7 @@ def test_gui_modules_import_without_opening_window():
     from safedesk.gui.screens.launch_screen import LaunchScreen
     from safedesk.gui.screens.public_lock_screen import PublicLockScreen
     from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
+    from safedesk.gui.screens.alarm_system_screen import AlarmSystemScreen
     from safedesk.gui.screens.intruder_history_screen import IntruderHistoryScreen
 
     assert safedesk.gui.main_window.SafeDeskMainWindow is not None
@@ -85,4 +88,5 @@ def test_gui_modules_import_without_opening_window():
     assert LaunchScreen is not None
     assert PublicLockScreen is not None
     assert AdminGateScreen is not None
+    assert AlarmSystemScreen is not None
     assert IntruderHistoryScreen is not None

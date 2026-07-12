@@ -22,6 +22,7 @@ INTRUDER_HISTORY = "intruder_history"
 THREAT_LEVEL_DEMO = "threat_level_demo"
 PROTECTED_MODE_PREVIEW = "protected_mode_preview"
 SHUTDOWN_ESCALATION = "shutdown_escalation"
+ALARM_SYSTEM = "alarm_system"
 DASHBOARD = "dashboard"
 SETTINGS = "settings"
 ABOUT = "about"
@@ -49,6 +50,7 @@ SCREEN_DEFINITIONS = (
     ScreenDefinition(THREAT_LEVEL_DEMO, "Threat Level Demo", "Manual threat-level simulation foundation."),
     ScreenDefinition(PROTECTED_MODE_PREVIEW, "Protected Mode Demo", "Safe protected-mode foundation simulator."),
     ScreenDefinition(SHUTDOWN_ESCALATION, "Shutdown Escalation Demo", "Dry-run shutdown escalation foundation."),
+    ScreenDefinition(ALARM_SYSTEM, "Alarm System", "Owner-controlled demo-safe alarm preview and status."),
     ScreenDefinition(DASHBOARD, "Dashboard", "Owner-only SafeDesk status and recent activity overview."),
     ScreenDefinition(SETTINGS, "Settings", "Future settings placeholder."),
     ScreenDefinition(ABOUT, "About", "Project information."),

@@ -242,8 +242,16 @@ DEFAULT_CONFIG = {
     },
     "alarm": {
         "enabled": False,
-        "volume": 0.5,
+        "foundation_enabled": True,
+        "demo_only": True,
+        "manual_preview_enabled": True,
+        "automatic_trigger_enabled": False,
+        "allow_looping": False,
+        "max_preview_duration_seconds": 5,
+        "beep_fallback_enabled": True,
         "audio_file": "",
+        "allowed_audio_dir": "assets/audio",
+        "volume": 0.5,
     },
     "logging": {
         "enabled": True,

@@ -73,8 +73,24 @@ def test_dashboard_service_reports_setup_profile_and_lockdown_status_safely(tmp_
 def test_dashboard_service_handles_missing_state_files_gracefully(tmp_path):
     summary = DashboardService(_config_for_tmp(tmp_path), tmp_path).build_summary()
     threat_section = next(section for section in summary.sections if section.title == "Threat & Protection")
+    state_rows = {row.label: row.value for row in threat_section.rows}
 
-    assert all(row.value == "No local state yet" for row in threat_section.rows)
+    assert state_rows["Threat state"] == "No local state yet"
+    assert state_rows["Protected mode"] == "No local state yet"
+    assert state_rows["Shutdown escalation"] == "No local state yet"
+
+
+def test_dashboard_service_reports_safe_alarm_readiness_without_audio_details(tmp_path):
+    summary = DashboardService(_config_for_tmp(tmp_path), tmp_path).build_summary()
+    threat_section = next(section for section in summary.sections if section.title == "Threat & Protection")
+    rows = {row.label: row.value for row in threat_section.rows}
+
+    assert rows["Alarm foundation"] == "enabled"
+    assert rows["Manual alarm preview"] == "enabled"
+    assert rows["Automatic alarm trigger"] == "disabled"
+    assert rows["Alarm looping"] == "disabled"
+    assert "audio" not in "\n".join(rows)
+    assert ".wav" not in "\n".join(rows.values())
 
 
 def test_dashboard_service_reads_recent_events_without_metadata_dump(tmp_path):
