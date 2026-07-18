@@ -40,6 +40,23 @@ def test_local_config_missing_does_not_fail(tmp_path):
     assert result.config["app"]["name"] == "SafeDesk"
 
 
+def test_local_config_merges_last_and_can_be_excluded_for_candidate_validation(tmp_path):
+    example = tmp_path / "config.example.json"
+    local = tmp_path / "config.local.json"
+    example.write_text(json.dumps({"ui": {"start_maximized": False}}), encoding="utf-8")
+    local.write_text(json.dumps({"ui": {"start_maximized": True}}), encoding="utf-8")
+
+    effective = load_config(root=tmp_path)
+    base_only = load_config(root=tmp_path, include_local=False)
+
+    assert effective.config["ui"]["start_maximized"] is True
+    assert effective.local_config_loaded is True
+    assert local in effective.loaded_files
+    assert base_only.config["ui"]["start_maximized"] is False
+    assert base_only.local_config_loaded is False
+    assert local not in base_only.loaded_files
+
+
 def test_invalid_json_raises_clear_error(tmp_path):
     example = tmp_path / "config.example.json"
     example.write_text("{ invalid json", encoding="utf-8")

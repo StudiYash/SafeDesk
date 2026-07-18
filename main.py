@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Usage: python main.py [--check-config]")
         return 2
 
-    return run_app(check_config_only=check_config_only)
+    return run_app(check_config_only=check_config_only, root=PROJECT_ROOT)
 
 
 if __name__ == "__main__":

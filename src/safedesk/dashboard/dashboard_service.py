@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from safedesk.config.env_loader import load_environment
+from safedesk.config.validators import validate_config
 from safedesk.dashboard.dashboard_models import (
     DashboardEventSummary,
     DashboardRow,
@@ -13,11 +15,12 @@ from safedesk.dashboard.dashboard_models import (
     DashboardSummary,
 )
 from safedesk.intruder_history import IntruderHistoryReader
+from safedesk.developer_tools import DeveloperToolsPolicy
 from safedesk.logging.dashboard_helpers import format_event_timestamp_for_display
 from safedesk.logging.sqlite_log_store import SQLiteLogStore
 from safedesk.protected_mode.protected_state import load_protected_mode_state
 from safedesk.shutdown_escalation.shutdown_state import load_shutdown_state
-from safedesk.storage.paths import project_root
+from safedesk.storage.paths import local_config_path, project_root
 from safedesk.threats.threat_state import load_threat_state
 from safedesk.vision.owner_manifest import build_registration_status
 
@@ -32,9 +35,18 @@ PROJECT_DATA_PATH_PATTERN = re.compile(
 class DashboardService:
     """Build owner-only SafeDesk status summaries without exposing private paths."""
 
-    def __init__(self, config: dict, root: Path | None = None):
+    def __init__(
+        self,
+        config: dict,
+        root: Path | None = None,
+        *,
+        configuration_valid: bool | None = None,
+        effective_environment: str | None = None,
+    ):
         self.config = config
         self.root = root or project_root()
+        self.configuration_valid = configuration_valid
+        self.effective_environment = effective_environment
 
     def build_summary(self, recent_event_limit: int = 5) -> DashboardSummary:
         intruder_history = IntruderHistoryReader(self.config, self.root).build_summary()
@@ -47,6 +59,7 @@ class DashboardService:
             self._threat_protection_section(),
             self._event_logging_section(len(recent_events)),
             self._intruder_evidence_section(intruder_history),
+            self._configuration_tools_section(),
         )
         return DashboardSummary(sections=sections, recent_events=recent_events, intruder_history=intruder_history)
 
@@ -57,7 +70,14 @@ class DashboardService:
             rows=(
                 DashboardRow("Application", self._safe_text(app.get("name", "SafeDesk"))),
                 DashboardRow("Version", self._safe_text(app.get("version", "unknown"))),
-                DashboardRow("Environment", self._safe_text(app.get("environment", "development"))),
+                DashboardRow(
+                    "Environment",
+                    self._safe_text(
+                        self.effective_environment
+                        if self.effective_environment is not None
+                        else app.get("environment", "development")
+                    ),
+                ),
                 DashboardRow("Demo/safe mode", self._yes_no(app.get("demo_safe_mode", True))),
                 DashboardRow("Security mode", self._safe_text(self.config.get("security_mode", {}).get("default_mode", "unknown"))),
             ),
@@ -181,6 +201,32 @@ class DashboardService:
                 DashboardRow("Images available", str(intruder_history.image_available_count)),
                 DashboardRow("Most recent capture", intruder_history.most_recent_capture),
                 DashboardRow("Review", "Open Intruder History from the Admin Console sidebar."),
+            ),
+        )
+
+    def _configuration_tools_section(self) -> DashboardSection:
+        policy = DeveloperToolsPolicy(
+            self.config,
+            effective_environment=self.effective_environment,
+        ).build_status()
+        configuration_valid = self.configuration_valid
+        if configuration_valid is None:
+            try:
+                configuration_valid = validate_config(
+                    self.config,
+                    load_environment(environ={}),
+                    root=self.root,
+                ).is_valid
+            except Exception:
+                configuration_valid = False
+        return DashboardSection(
+            "Configuration & Tools",
+            rows=(
+                DashboardRow("Local settings override", "present" if local_config_path(self.root).is_file() else "not present"),
+                DashboardRow("Configuration status", "valid" if configuration_valid else "invalid"),
+                DashboardRow("Developer Tools", "visible" if policy.landing_visible else "hidden"),
+                DashboardRow("Demo routes", "available" if policy.demo_routes_allowed else "hidden"),
+                DashboardRow("Runtime diagnostics", "enabled" if policy.diagnostics_visible else "hidden"),
             ),
         )
 

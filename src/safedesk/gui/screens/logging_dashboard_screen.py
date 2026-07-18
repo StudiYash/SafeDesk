@@ -1,6 +1,8 @@
 """Manual local event logs dashboard."""
 
 import json
+from queue import Empty, Queue
+from threading import Thread
 
 import customtkinter as ctk
 
@@ -19,6 +21,11 @@ from safedesk.logging.dashboard_helpers import (
     format_event_timestamp_for_display,
 )
 from safedesk.logging.event_logger import build_logger_from_config
+from safedesk.logging.log_models import EventLogResult
+from safedesk.logging.sqlite_log_store import MAX_EVENT_PAGE_SIZE
+
+EVENT_LOG_PAGE_SIZE = 50
+CLEAR_RESULT_POLL_MS = 75
 
 
 class LoggingDashboardScreen(ctk.CTkFrame):
@@ -38,8 +45,16 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         self.action_var = ctk.StringVar(value=ALL_FILTER)
         self.source_var = ctk.StringVar(value=ALL_FILTER)
         self.sort_field_var = ctk.StringVar(value="Event Number")
-        self.sort_direction_var = ctk.StringVar(value="Ascending")
+        self.sort_direction_var = ctk.StringVar(value="Descending")
         self.clear_logs_confirmation_pending = False
+        self.page_size = min(EVENT_LOG_PAGE_SIZE, MAX_EVENT_PAGE_SIZE)
+        self.current_page = 0
+        self.total_event_count = 0
+        self._clear_in_progress = False
+        self._clear_result_queue: Queue[EventLogResult] = Queue()
+        self._clear_poll_after_id = None
+        self._clear_thread: Thread | None = None
+        self._screen_active = True
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -72,18 +87,20 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         actions.grid(row=4, column=0, sticky="ew", padx=4, pady=6)
         for column in (0, 1, 2):
             actions.grid_columnconfigure(column, weight=1, uniform="log_actions")
-        ctk.CTkButton(
+        self.refresh_button = ctk.CTkButton(
             actions,
             text="Refresh Logs",
-            command=self.refresh_logs,
+            command=lambda: self.refresh_logs(reset_page=True),
             **ds.secondary_button_kwargs(),
-        ).grid(row=0, column=0, sticky="ew", padx=(ds.SPACE_LG, ds.SPACE_SM), pady=ds.SPACE_MD)
-        ctk.CTkButton(
+        )
+        self.refresh_button.grid(row=0, column=0, sticky="ew", padx=(ds.SPACE_LG, ds.SPACE_SM), pady=ds.SPACE_MD)
+        self.clear_button = ctk.CTkButton(
             actions,
             text="Clear Logs",
             command=self.clear_logs,
             **ds.secondary_button_kwargs(),
-        ).grid(row=0, column=1, sticky="ew", padx=ds.SPACE_SM, pady=ds.SPACE_MD)
+        )
+        self.clear_button.grid(row=0, column=1, sticky="ew", padx=ds.SPACE_SM, pady=ds.SPACE_MD)
         ctk.CTkButton(
             actions,
             text="Create Test Log Event",
@@ -103,8 +120,32 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         )
         self.summary_label.grid(row=6, column=0, sticky="ew", padx=8, pady=(0, 6))
 
+        pagination = ctk.CTkFrame(self.page, **ds.card_kwargs())
+        pagination.grid(row=7, column=0, sticky="ew", padx=4, pady=(0, 6))
+        pagination.grid_columnconfigure(1, weight=1)
+        self.previous_button = ctk.CTkButton(
+            pagination,
+            text="Previous",
+            command=self._previous_page,
+            **ds.secondary_button_kwargs(),
+        )
+        self.previous_button.grid(row=0, column=0, padx=ds.SPACE_LG, pady=ds.SPACE_SM)
+        self.page_status_label = ctk.CTkLabel(
+            pagination,
+            text="Events 0 of 0",
+            text_color=ds.TEXT_SECONDARY,
+        )
+        self.page_status_label.grid(row=0, column=1, sticky="ew", padx=ds.SPACE_SM, pady=ds.SPACE_SM)
+        self.next_button = ctk.CTkButton(
+            pagination,
+            text="Next",
+            command=self._next_page,
+            **ds.secondary_button_kwargs(),
+        )
+        self.next_button.grid(row=0, column=2, padx=ds.SPACE_LG, pady=ds.SPACE_SM)
+
         self.events_frame = ctk.CTkFrame(self.page, fg_color="transparent")
-        self.events_frame.grid(row=7, column=0, sticky="ew", padx=0, pady=0)
+        self.events_frame.grid(row=8, column=0, sticky="ew", padx=0, pady=0)
         self.events_frame.grid_columnconfigure(0, weight=1)
 
         self.refresh_logs()
@@ -140,12 +181,12 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             border_color=ds.BORDER_MUTED,
         )
         self.search_entry.grid(row=2, column=0, columnspan=3, sticky="ew", padx=(ds.SPACE_LG, ds.SPACE_SM), pady=(0, ds.SPACE_SM))
-        self.search_entry.bind("<Return>", lambda _event: self.refresh_logs())
+        self.search_entry.bind("<Return>", lambda _event: self.refresh_logs(reset_page=True))
 
         ctk.CTkButton(
             panel,
             text="Search",
-            command=self.refresh_logs,
+            command=lambda: self.refresh_logs(reset_page=True),
             **ds.primary_button_kwargs(),
         ).grid(row=2, column=3, sticky="ew", padx=ds.SPACE_SM, pady=(0, ds.SPACE_SM))
         ctk.CTkButton(
@@ -183,7 +224,7 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             master,
             variable=variable,
             values=values or [ALL_FILTER],
-            command=lambda _choice: self.refresh_logs(),
+            command=lambda _choice: self.refresh_logs(reset_page=True),
             fg_color=ds.CARD_BG_ALT,
             button_color=ds.BORDER_MUTED,
             button_hover_color=ds.SAFEDESK_RED,
@@ -204,12 +245,16 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         self.action_var.set(ALL_FILTER)
         self.source_var.set(ALL_FILTER)
         self.sort_field_var.set("Event Number")
-        self.sort_direction_var.set("Ascending")
-        self.refresh_logs()
+        self.sort_direction_var.set("Descending")
+        self.refresh_logs(reset_page=True)
 
-    def refresh_logs(self, reset_clear_confirmation: bool = True) -> None:
+    def refresh_logs(self, reset_clear_confirmation: bool = True, reset_page: bool = False) -> None:
+        if self._clear_in_progress:
+            return
         if reset_clear_confirmation:
             self.clear_logs_confirmation_pending = False
+        if reset_page:
+            self.current_page = 0
 
         for child in self.status_container.winfo_children():
             child.destroy()
@@ -229,7 +274,14 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             accent=ds.SAFEDESK_NEUTRAL,
         ).grid(row=0, column=0, sticky="ew", padx=4, pady=6)
 
-        events = self.logger.store.list_events()
+        self.total_event_count = status.event_count
+        if self.total_event_count == 0:
+            self.current_page = 0
+        else:
+            last_page = (self.total_event_count - 1) // self.page_size
+            self.current_page = min(self.current_page, last_page)
+        offset = self.current_page * self.page_size
+        events = self.logger.store.list_event_page(limit=self.page_size, offset=offset)
         self._update_filter_options(events)
         filters = {
             "category": self.category_var.get(),
@@ -247,14 +299,21 @@ class LoggingDashboardScreen(ctk.CTkFrame):
         )
 
         if self.search_var.get().strip() or any(value != ALL_FILTER for value in filters.values()):
-            self.summary_label.configure(text=f"Showing {len(visible_events)} of {len(events)} events after filters/search.")
+            self.summary_label.configure(text=f"Showing {len(visible_events)} of {len(events)} events on this page after filters/search.")
         else:
-            self.summary_label.configure(text=f"Showing {len(visible_events)} of {len(events)} events.")
+            self.summary_label.configure(text=f"Showing {len(visible_events)} events on this page.")
+
+        page_start = offset + 1 if self.total_event_count else 0
+        page_end = offset + len(events)
+        self.page_status_label.configure(text=f"Events {page_start}\u2013{page_end} of {self.total_event_count:,}")
+        self._update_pagination_controls()
 
         if not visible_events:
             InfoBanner(
                 self.events_frame,
-                "No local events match the current search and filters." if events else "No local events have been recorded yet.",
+                "No local events match the current search and filters on this page."
+                if events
+                else "No local events have been recorded yet.",
                 kind="neutral",
                 compact=True,
             ).grid(row=0, column=0, sticky="ew", padx=4, pady=6)
@@ -297,6 +356,8 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             variable.set(ALL_FILTER)
 
     def create_test_log_event(self) -> None:
+        if self._clear_in_progress:
+            return
         self.clear_logs_confirmation_pending = False
         result = self.logger.log_app_event(
             action="manual_test_event",
@@ -305,16 +366,67 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             metadata={"trigger": "event_logs_dashboard"},
         )
         self.message_banner.set_message(result.message)
-        self.refresh_logs()
+        self.refresh_logs(reset_page=True)
 
     def clear_logs(self) -> None:
+        if self._clear_in_progress:
+            return
         if not self.clear_logs_confirmation_pending:
             self.clear_logs_confirmation_pending = True
             self.message_banner.set_message("Press Clear Logs again to confirm. This will delete local event records only.")
             return
 
+        self._begin_clear_operation()
+
+    def _begin_clear_operation(self) -> None:
+        if self._clear_in_progress:
+            return
         self.clear_logs_confirmation_pending = False
-        result = self.logger.store.clear_events()
+        self._clear_in_progress = True
+        self._set_clear_controls_enabled(False)
+        self.message_banner.set_message("Clearing local events...")
+        try:
+            self._clear_thread = Thread(target=self._clear_events_worker, daemon=True)
+            self._clear_thread.start()
+        except Exception:
+            self._clear_thread = None
+            self._clear_in_progress = False
+            self._update_pagination_controls()
+            self.message_banner.set_message("Local event logs could not be cleared.")
+            return
+        self._schedule_clear_poll()
+
+    def _clear_events_worker(self) -> None:
+        try:
+            result = self.logger.store.clear_events()
+        except Exception:
+            result = EventLogResult(False, "storage_error", "Local event logs could not be cleared.")
+        self._clear_result_queue.put(result)
+
+    def _schedule_clear_poll(self) -> None:
+        if not self._screen_active or self._clear_poll_after_id is not None:
+            return
+        try:
+            self._clear_poll_after_id = self.after(CLEAR_RESULT_POLL_MS, self._poll_clear_result)
+        except Exception:
+            self._clear_poll_after_id = None
+
+    def _poll_clear_result(self) -> None:
+        self._clear_poll_after_id = None
+        if not self._screen_active:
+            return
+        try:
+            result = self._clear_result_queue.get_nowait()
+        except Empty:
+            self._schedule_clear_poll()
+            return
+        self._complete_clear_operation(result)
+
+    def _complete_clear_operation(self, result: EventLogResult) -> None:
+        if not self._screen_active:
+            return
+        self._clear_in_progress = False
+        self._clear_thread = None
         if result.success:
             self.search_var.set("")
             self.category_var.set(ALL_FILTER)
@@ -323,6 +435,59 @@ class LoggingDashboardScreen(ctk.CTkFrame):
             self.action_var.set(ALL_FILTER)
             self.source_var.set(ALL_FILTER)
             self.sort_field_var.set("Event Number")
-            self.sort_direction_var.set("Ascending")
-            self.refresh_logs(reset_clear_confirmation=False)
+            self.sort_direction_var.set("Descending")
+            self.current_page = 0
+            self.total_event_count = 0
+            self.refresh_logs(reset_clear_confirmation=False, reset_page=True)
+        else:
+            self._update_pagination_controls()
         self.message_banner.set_message(result.message)
+
+    def _previous_page(self) -> None:
+        if self._clear_in_progress or self.current_page <= 0:
+            return
+        self.current_page -= 1
+        self.refresh_logs()
+
+    def _next_page(self) -> None:
+        if self._clear_in_progress:
+            return
+        if (self.current_page + 1) * self.page_size >= self.total_event_count:
+            return
+        self.current_page += 1
+        self.refresh_logs()
+
+    def _set_clear_controls_enabled(self, enabled: bool) -> None:
+        state = "normal" if enabled else "disabled"
+        for button in (self.clear_button, self.refresh_button, self.previous_button, self.next_button):
+            try:
+                button.configure(state=state)
+            except Exception:
+                pass
+
+    def _update_pagination_controls(self) -> None:
+        if self._clear_in_progress:
+            self._set_clear_controls_enabled(False)
+            return
+        self.clear_button.configure(state="normal")
+        self.refresh_button.configure(state="normal")
+        self.previous_button.configure(state="normal" if self.current_page > 0 else "disabled")
+        has_next = (self.current_page + 1) * self.page_size < self.total_event_count
+        self.next_button.configure(state="normal" if has_next else "disabled")
+
+    def release_resources(self) -> None:
+        self._screen_active = False
+        self.clear_logs_confirmation_pending = False
+        if self._clear_poll_after_id is not None:
+            try:
+                self.after_cancel(self._clear_poll_after_id)
+            except Exception:
+                pass
+            self._clear_poll_after_id = None
+
+    def resume_resources(self) -> None:
+        self._screen_active = True
+        if self._clear_in_progress:
+            self._schedule_clear_poll()
+        else:
+            self._update_pagination_controls()

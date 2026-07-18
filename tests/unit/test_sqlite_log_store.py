@@ -62,6 +62,37 @@ def test_sqlite_store_still_can_return_recent_events_newest_first(tmp_path):
     assert [(event.event_number, event.action) for event in events] == [(2, "newer"), (1, "older")]
 
 
+def test_sqlite_store_returns_bounded_newest_first_pages(tmp_path):
+    store = SQLiteLogStore(tmp_path / "safedesk.sqlite3")
+    for number in range(1, 121):
+        store.add_event(SafeDeskEvent(category="app", action=f"event_{number}", status="info"))
+
+    first_page = store.list_event_page(limit=50, offset=0)
+    second_page = store.list_event_page(limit=50, offset=50)
+
+    assert len(first_page) == 50
+    assert len(second_page) == 50
+    assert [event.event_number for event in first_page] == list(range(120, 70, -1))
+    assert [event.event_number for event in second_page] == list(range(70, 20, -1))
+    assert store.count_events() == 120
+
+
+def test_sqlite_store_caps_page_size_and_rejects_unsafe_paging(tmp_path):
+    store = SQLiteLogStore(tmp_path / "safedesk.sqlite3")
+    for number in range(1, 121):
+        store.add_event(SafeDeskEvent(category="app", action=f"event_{number}", status="info"))
+
+    assert len(store.list_event_page(limit=500, offset=0)) == 100
+
+    for limit, offset in ((0, 0), (-1, 0), (True, 0), (50, -1), (50, True)):
+        try:
+            store.list_event_page(limit=limit, offset=offset)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Unsafe page values must be rejected.")
+
+
 def test_sqlite_store_round_trips_metadata(tmp_path):
     store = SQLiteLogStore(tmp_path / "safedesk.sqlite3")
     event = SafeDeskEvent(
@@ -137,6 +168,13 @@ def test_sqlite_store_clear_events_removes_rows_and_resets_count(tmp_path):
     assert store.count_events() == 0
     assert store.build_status(enabled=True).event_count == 0
     assert "safedesk.sqlite3" not in result.message
+
+
+def test_interactive_clear_path_does_not_run_vacuum():
+    source = (SRC / "safedesk" / "logging" / "sqlite_log_store.py").read_text(encoding="utf-8")
+    clear_body = source.split("def clear_events", 1)[1].split("def clear_events_for_demo", 1)[0]
+
+    assert "VACUUM" not in clear_body
 
 
 def test_sqlite_store_clear_events_resets_event_numbering(tmp_path):

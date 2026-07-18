@@ -22,6 +22,7 @@ Custom Environment/env/
 .env.*
 !.env.example
 config.local.json
+config.local.json.tmp
 secrets.local.json
 secrets.local.json.tmp
 secrets.json

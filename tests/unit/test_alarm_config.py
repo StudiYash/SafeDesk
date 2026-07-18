@@ -38,6 +38,8 @@ def test_default_alarm_config_is_complete_and_valid():
     assert report.is_valid is True
     assert set(DEFAULT_CONFIG["alarm"]) == expected
     assert set(example["alarm"]) == expected
+    assert DEFAULT_CONFIG["alarm"]["audio_file"] == ""
+    assert example["alarm"]["audio_file"] == ""
 
 
 def test_alarm_section_and_boolean_fields_are_validated():

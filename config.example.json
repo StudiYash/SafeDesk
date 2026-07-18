@@ -91,6 +91,12 @@
     "prevent_duplicate_activation": true,
     "log_lifecycle_events": true
   },
+  "developer_tools": {
+    "enabled": true,
+    "demo_only": true,
+    "show_demo_screens": true,
+    "show_runtime_diagnostics": true
+  },
   "feature_flags": {
     "enable_real_email": false,
     "enable_real_shutdown": false,
@@ -248,7 +254,7 @@
     "allow_looping": false,
     "max_preview_duration_seconds": 5,
     "beep_fallback_enabled": true,
-    "audio_file": "preview.wav",
+    "audio_file": "",
     "allowed_audio_dir": "assets/audio",
     "volume": 0.5
   },

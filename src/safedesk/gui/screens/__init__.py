@@ -4,6 +4,7 @@ from safedesk.gui.screens.about_screen import AboutScreen
 from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
 from safedesk.gui.screens.authentication_setup_screen import AuthenticationSetupScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
+from safedesk.gui.screens.developer_tools_screen import DeveloperToolsScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
 from safedesk.gui.screens.home_screen import HomeScreen
 from safedesk.gui.screens.intruder_detection_demo_screen import IntruderDetectionDemoScreen
@@ -14,7 +15,7 @@ from safedesk.gui.screens.owner_face_registration_screen import OwnerFaceRegistr
 from safedesk.gui.screens.otp_email_setup_screen import OtpEmailSetupScreen
 from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
 from safedesk.gui.screens.public_lock_screen import PublicLockScreen
-from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
+from safedesk.gui.screens.settings_screen import SettingsScreen
 from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
 from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
 from safedesk.gui.screens.shutdown_escalation_screen import ShutdownEscalationScreen
@@ -25,6 +26,7 @@ __all__ = [
     "AdminGateScreen",
     "AuthenticationSetupScreen",
     "DashboardPlaceholderScreen",
+    "DeveloperToolsScreen",
     "FaceRecognitionDemoScreen",
     "HomeScreen",
     "IntruderDetectionDemoScreen",
@@ -35,7 +37,7 @@ __all__ = [
     "OtpEmailSetupScreen",
     "ProtectedModePreviewScreen",
     "PublicLockScreen",
-    "SettingsPlaceholderScreen",
+    "SettingsScreen",
     "SetupStatusScreen",
     "SetupWizardScreen",
     "ShutdownEscalationScreen",

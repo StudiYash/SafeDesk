@@ -15,6 +15,7 @@ from safedesk.app_modes import (
     parse_app_mode,
 )
 from safedesk.background_agent import BackgroundAgentManager, TrayController
+from safedesk.developer_tools import DeveloperToolsPolicy
 from safedesk.global_shortcut import GlobalShortcutManager, WindowsHotkeyController
 from safedesk.gui import design_system as ds
 from safedesk.gui.components.sidebar_button import SidebarButton
@@ -23,6 +24,7 @@ from safedesk.gui.navigation import (
     ALARM_SYSTEM,
     AUTHENTICATION_SETUP,
     DASHBOARD,
+    DEVELOPER_TOOLS,
     EVENT_LOGS,
     FACE_RECOGNITION_DEMO,
     HOME,
@@ -32,18 +34,21 @@ from safedesk.gui.navigation import (
     OWNER_FACE_REGISTRATION,
     OTP_EMAIL_SETUP,
     PROTECTED_MODE_PREVIEW,
-    SCREEN_DEFINITIONS,
+    SCREEN_NAMES,
     SETUP_STATUS,
     SETUP_WIZARD,
     SETTINGS,
     SHUTDOWN_ESCALATION,
     THREAT_LEVEL_DEMO,
+    admin_route_allowed,
+    visible_sidebar_sections,
 )
 from safedesk.gui.screens.about_screen import AboutScreen
 from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
 from safedesk.gui.screens.alarm_system_screen import AlarmSystemScreen
 from safedesk.gui.screens.authentication_setup_screen import AuthenticationSetupScreen
 from safedesk.gui.screens.dashboard_placeholder_screen import DashboardPlaceholderScreen
+from safedesk.gui.screens.developer_tools_screen import DeveloperToolsScreen
 from safedesk.gui.screens.face_recognition_demo_screen import FaceRecognitionDemoScreen
 from safedesk.gui.screens.home_screen import HomeScreen
 from safedesk.gui.screens.intruder_detection_demo_screen import IntruderDetectionDemoScreen
@@ -55,11 +60,12 @@ from safedesk.gui.screens.owner_face_registration_screen import OwnerFaceRegistr
 from safedesk.gui.screens.otp_email_setup_screen import OtpEmailSetupScreen
 from safedesk.gui.screens.protected_mode_preview_screen import ProtectedModePreviewScreen
 from safedesk.gui.screens.public_lock_screen import PublicLockScreen
-from safedesk.gui.screens.settings_placeholder_screen import SettingsPlaceholderScreen
+from safedesk.gui.screens.settings_screen import SettingsScreen
 from safedesk.gui.screens.setup_status_screen import SetupStatusScreen
 from safedesk.gui.screens.setup_wizard_screen import SetupWizardScreen
 from safedesk.gui.screens.shutdown_escalation_screen import ShutdownEscalationScreen
 from safedesk.gui.screens.threat_level_demo_screen import ThreatLevelDemoScreen
+from safedesk.gui.startup_maximize import StartupMaximizeController
 from safedesk.gui.theme import apply_theme
 from safedesk.interaction_lock import SafeInteractionLockManager
 from safedesk.lockdown_display import LockdownDisplayManager
@@ -73,10 +79,16 @@ class SafeDeskMainWindow(ctk.CTk):
     def __init__(self, context: RuntimeContext):
         enable_windows_dpi_awareness()
         self.context = context
+        self.project_root = context.project_root
         self.config = context.load_result.config
         self.ui_config = self.config.get("ui", {})
         self.app_mode_config = self.config.get("app_modes", {})
         self.admin_gate_config = self.config.get("admin_gate", {})
+        self.effective_environment = context.settings.environment
+        self.developer_tools_policy = DeveloperToolsPolicy(
+            self.config,
+            effective_environment=self.effective_environment,
+        )
         self.public_lock_placeholder_allowed = can_open_public_lock_placeholder(self.config)
         self.mode_manager = AppModeManager(self._configured_start_mode())
         self.event_logger = build_logger_from_config(self.config)
@@ -93,6 +105,8 @@ class SafeDeskMainWindow(ctk.CTk):
         )
         self._hidden_to_tray = False
         self._destroying = False
+        self._startup_maximize_requested = self.ui_config.get("start_maximized") is True
+        self.startup_maximize_controller: StartupMaximizeController | None = None
         apply_theme(self.ui_config)
         super().__init__()
 
@@ -139,8 +153,13 @@ class SafeDeskMainWindow(ctk.CTk):
             PROTECTED_MODE_PREVIEW: ProtectedModePreviewScreen,
             SHUTDOWN_ESCALATION: ShutdownEscalationScreen,
             ALARM_SYSTEM: AlarmSystemScreen,
+            DEVELOPER_TOOLS: lambda master, runtime_context: DeveloperToolsScreen(
+                master,
+                runtime_context,
+                on_open_screen=self.show_screen,
+            ),
             DASHBOARD: DashboardPlaceholderScreen,
-            SETTINGS: SettingsPlaceholderScreen,
+            SETTINGS: SettingsScreen,
             ABOUT: AboutScreen,
         }
 
@@ -148,6 +167,12 @@ class SafeDeskMainWindow(ctk.CTk):
         self._start_background_agent_if_configured()
         self._start_global_shortcut_if_configured()
         self._show_initial_mode()
+        self.startup_maximize_controller = StartupMaximizeController(
+            self,
+            requested=self._startup_maximize_requested,
+            destroying=lambda: self._destroying,
+        )
+        self.startup_maximize_controller.arm()
 
     def _build_sidebar(self) -> None:
         title = ctk.CTkLabel(
@@ -204,10 +229,28 @@ class SafeDeskMainWindow(ctk.CTk):
         self.nav_frame.grid(row=3, column=0, sticky="nsew", padx=0, pady=(0, 12))
         self.nav_frame.grid_columnconfigure(0, weight=1)
 
-        for index, screen in enumerate(SCREEN_DEFINITIONS):
-            button = SidebarButton(self.nav_frame, text=screen.label, command=lambda name=screen.name: self.show_screen(name))
-            button.grid(row=index, column=0, padx=14, pady=4, sticky="ew")
-            self.buttons[screen.name] = button
+        row_index = 0
+        for section_name, screens in visible_sidebar_sections(
+            self.config,
+            effective_environment=self.effective_environment,
+        ):
+            ctk.CTkLabel(
+                self.nav_frame,
+                text=section_name,
+                text_color=ds.TEXT_MUTED,
+                font=ctk.CTkFont(size=11, weight="bold"),
+                anchor="w",
+            ).grid(row=row_index, column=0, padx=20, pady=(12, 4), sticky="ew")
+            row_index += 1
+            for screen in screens:
+                button = SidebarButton(
+                    self.nav_frame,
+                    text=screen.label,
+                    command=lambda name=screen.name: self.show_screen(name),
+                )
+                button.grid(row=row_index, column=0, padx=14, pady=4, sticky="ew")
+                self.buttons[screen.name] = button
+                row_index += 1
 
         self.lock_button = SidebarButton(self.sidebar, text="Lock SafeDesk", command=self.show_public_lock_screen)
         if not self.public_lock_placeholder_allowed:
@@ -549,6 +592,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self._hidden_to_tray = False
         self.deiconify()
         self.lift()
+        self._resume_current_screen_resources()
 
     def exit_from_tray(self) -> None:
         self._log_app_route_event("tray_exit_requested", "Tray requested SafeDesk exit.")
@@ -661,6 +705,7 @@ class SafeDeskMainWindow(ctk.CTk):
         self._show_admin_screen(screen_name)
 
     def _show_admin_screen(self, screen_name: str) -> None:
+        screen_name = self._guard_admin_screen_route(screen_name)
         self._clear_current_screen()
 
         factory = self.screen_factories.get(screen_name, HomeScreen)
@@ -668,16 +713,48 @@ class SafeDeskMainWindow(ctk.CTk):
         self.current_screen.grid(row=0, column=0, sticky="nsew", padx=18, pady=18)
         self._set_admin_active_button(screen_name)
 
+    def _guard_admin_screen_route(self, screen_name: str) -> str:
+        if screen_name not in SCREEN_NAMES:
+            return HOME
+
+        policy_status = self.developer_tools_policy.build_status()
+        if admin_route_allowed(
+            self.config,
+            screen_name,
+            effective_environment=self.effective_environment,
+        ):
+            return screen_name
+
+        self._log_app_route_event(
+            "developer_tool_route_blocked",
+            "A Developer Tools route was blocked by safe policy.",
+            {
+                "route": screen_name,
+                "result_status": "blocked",
+                "demo_routes_allowed": policy_status.demo_routes_allowed,
+                "diagnostics_visible": policy_status.diagnostics_visible,
+            },
+        )
+        return HOME
+
     def _release_current_screen_resources(self) -> None:
         if self.current_screen is not None:
             release = getattr(self.current_screen, "release_resources", None)
             if callable(release):
                 release()
 
+    def _resume_current_screen_resources(self) -> None:
+        if self.current_screen is not None:
+            resume = getattr(self.current_screen, "resume_resources", None)
+            if callable(resume):
+                resume()
+
     def destroy(self) -> None:
         if self._destroying:
             return
         self._destroying = True
+        if self.startup_maximize_controller is not None:
+            self.startup_maximize_controller.cancel()
         self._stop_lockdown_display()
         self._release_current_screen_resources()
         self._stop_global_shortcut()

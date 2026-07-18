@@ -14,6 +14,7 @@ from safedesk.gui.navigation import (
     AUTHENTICATION_SETUP,
     BACKGROUND_AGENT,
     DASHBOARD,
+    DEVELOPER_TOOLS,
     EVENT_LOGS,
     FACE_RECOGNITION_DEMO,
     HOME,
@@ -57,6 +58,7 @@ def test_navigation_metadata_contains_expected_screens():
         SHUTDOWN_ESCALATION,
         ALARM_SYSTEM,
         DASHBOARD,
+        DEVELOPER_TOOLS,
         SETTINGS,
         ABOUT,
     }
@@ -76,6 +78,8 @@ def test_gui_modules_import_without_opening_window():
     from safedesk.gui.screens.admin_gate_screen import AdminGateScreen
     from safedesk.gui.screens.alarm_system_screen import AlarmSystemScreen
     from safedesk.gui.screens.intruder_history_screen import IntruderHistoryScreen
+    from safedesk.gui.screens.developer_tools_screen import DeveloperToolsScreen
+    from safedesk.gui.screens.settings_screen import SettingsScreen
 
     assert safedesk.gui.main_window.SafeDeskMainWindow is not None
     assert safedesk.gui.theme.apply_theme is not None
@@ -90,3 +94,5 @@ def test_gui_modules_import_without_opening_window():
     assert AdminGateScreen is not None
     assert AlarmSystemScreen is not None
     assert IntruderHistoryScreen is not None
+    assert DeveloperToolsScreen is not None
+    assert SettingsScreen is not None

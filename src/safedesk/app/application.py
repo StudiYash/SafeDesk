@@ -1,13 +1,16 @@
 """Safe application startup layer for SafeDesk."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from safedesk.config import build_runtime_settings, load_config, load_environment, validate_config
 from safedesk.config.models import ConfigLoadResult, ConfigValidationReport, EnvironmentSettings, SafeDeskRuntimeSettings
+from safedesk.storage.paths import env_path, project_root as default_project_root
 
 
 @dataclass(frozen=True)
 class RuntimeContext:
+    project_root: Path
     env: EnvironmentSettings
     load_result: ConfigLoadResult
     report: ConfigValidationReport
@@ -18,12 +21,19 @@ def _format_bool(value: bool) -> str:
     return "true" if value else "false"
 
 
-def load_runtime_context() -> RuntimeContext:
-    env = load_environment()
-    load_result = load_config()
-    report = validate_config(load_result.config, env)
+def load_runtime_context(root: Path | None = None) -> RuntimeContext:
+    runtime_root = (root or default_project_root()).resolve()
+    env = load_environment(env_file=env_path(runtime_root))
+    load_result = load_config(root=runtime_root)
+    report = validate_config(load_result.config, env, root=runtime_root)
     settings = build_runtime_settings(load_result.config, env, report)
-    return RuntimeContext(env=env, load_result=load_result, report=report, settings=settings)
+    return RuntimeContext(
+        project_root=runtime_root,
+        env=env,
+        load_result=load_result,
+        report=report,
+        settings=settings,
+    )
 
 
 def print_configuration_summary(settings: SafeDeskRuntimeSettings, report: ConfigValidationReport) -> None:
@@ -45,14 +55,14 @@ def print_configuration_summary(settings: SafeDeskRuntimeSettings, report: Confi
         print("Configuration status: review required before SafeDesk can continue")
 
 
-def run_config_check() -> int:
-    context = load_runtime_context()
+def run_config_check(root: Path | None = None) -> int:
+    context = load_runtime_context(root=root)
     print_configuration_summary(context.settings, context.report)
     return 0 if context.report.is_valid else 1
 
 
-def run_gui_app() -> int:
-    context = load_runtime_context()
+def run_gui_app(root: Path | None = None) -> int:
+    context = load_runtime_context(root=root)
     if not context.report.is_valid:
         print_configuration_summary(context.settings, context.report)
         return 1
@@ -71,7 +81,7 @@ def run_gui_app() -> int:
     return 0
 
 
-def run_app(check_config_only: bool = False) -> int:
+def run_app(check_config_only: bool = False, root: Path | None = None) -> int:
     if check_config_only:
-        return run_config_check()
-    return run_gui_app()
+        return run_config_check(root=root)
+    return run_gui_app(root=root)

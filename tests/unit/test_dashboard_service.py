@@ -93,6 +93,47 @@ def test_dashboard_service_reports_safe_alarm_readiness_without_audio_details(tm
     assert ".wav" not in "\n".join(rows.values())
 
 
+def test_dashboard_service_reports_safe_configuration_and_tools_status(tmp_path):
+    config = _config_for_tmp(tmp_path)
+    summary = DashboardService(config, tmp_path, configuration_valid=True).build_summary()
+    section = next(section for section in summary.sections if section.title == "Configuration & Tools")
+    rows = {row.label: row.value for row in section.rows}
+
+    assert rows["Local settings override"] == "not present"
+    assert rows["Configuration status"] == "valid"
+    assert rows["Developer Tools"] == "visible"
+    assert rows["Demo routes"] == "available"
+    assert rows["Runtime diagnostics"] == "enabled"
+    assert str(tmp_path) not in "\n".join(rows.values())
+
+    (tmp_path / "config.local.json").write_text("{}", encoding="utf-8")
+    updated = DashboardService(config, tmp_path, configuration_valid=False).build_summary()
+    updated_section = next(section for section in updated.sections if section.title == "Configuration & Tools")
+    updated_rows = {row.label: row.value for row in updated_section.rows}
+    assert updated_rows["Local settings override"] == "present"
+    assert updated_rows["Configuration status"] == "invalid"
+
+
+def test_dashboard_uses_effective_production_environment_for_policy_status(tmp_path):
+    summary = DashboardService(
+        _config_for_tmp(tmp_path),
+        tmp_path,
+        configuration_valid=True,
+        effective_environment="production",
+    ).build_summary()
+    status_section = next(section for section in summary.sections if section.title == "SafeDesk Status")
+    tools_section = next(section for section in summary.sections if section.title == "Configuration & Tools")
+    status_rows = {row.label: row.value for row in status_section.rows}
+    tools_rows = {row.label: row.value for row in tools_section.rows}
+
+    assert status_rows["Environment"] == "production"
+    assert tools_rows["Developer Tools"] == "hidden"
+    assert tools_rows["Demo routes"] == "hidden"
+    assert tools_rows["Runtime diagnostics"] == "hidden"
+    joined = "\n".join((*status_rows.values(), *tools_rows.values()))
+    assert "SAFEDESK_ENV" not in joined
+
+
 def test_dashboard_service_reads_recent_events_without_metadata_dump(tmp_path):
     config = _config_for_tmp(tmp_path)
     store = SQLiteLogStore(tmp_path / "data" / "logs" / "safedesk.sqlite3")

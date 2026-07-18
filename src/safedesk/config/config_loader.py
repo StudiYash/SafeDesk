@@ -43,6 +43,7 @@ def load_config(
     root: Path | None = None,
     example_path: Path | None = None,
     local_path: Path | None = None,
+    include_local: bool = True,
 ) -> ConfigLoadResult:
     """Load DEFAULT_CONFIG, public example config, and optional local config."""
 
@@ -58,7 +59,7 @@ def load_config(
         config = deep_merge(config, _load_json_file(example))
         loaded_files.append(example)
 
-    if local.exists():
+    if include_local and local.exists():
         config = deep_merge(config, _load_json_file(local))
         loaded_files.append(local)
         local_config_loaded = True

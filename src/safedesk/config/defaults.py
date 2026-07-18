@@ -94,6 +94,12 @@ DEFAULT_CONFIG = {
         "prevent_duplicate_activation": True,
         "log_lifecycle_events": True,
     },
+    "developer_tools": {
+        "enabled": True,
+        "demo_only": True,
+        "show_demo_screens": True,
+        "show_runtime_diagnostics": True,
+    },
     "feature_flags": {
         "enable_real_email": False,
         "enable_real_shutdown": False,

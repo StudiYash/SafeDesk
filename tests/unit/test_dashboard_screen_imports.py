@@ -30,3 +30,4 @@ def test_dashboard_screen_source_is_owner_only_read_only_summary():
     assert "send_email" not in source
     assert "requests.post" not in source
     assert "shutdown /s" not in source
+    assert "root=context.project_root" in source

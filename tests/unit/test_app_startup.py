@@ -23,3 +23,12 @@ def test_runtime_context_is_valid_for_safe_startup_config():
     assert context.settings.real_email_enabled is False
     assert context.settings.real_shutdown_enabled is False
     assert context.settings.real_lockdown_enabled is False
+
+
+def test_runtime_context_tracks_the_authoritative_project_root(tmp_path):
+    (tmp_path / "config.example.json").write_text("{}", encoding="utf-8")
+
+    context = load_runtime_context(root=tmp_path)
+
+    assert context.project_root == tmp_path.resolve()
+    assert context.load_result.loaded_files == (tmp_path / "config.example.json",)

@@ -590,6 +590,36 @@ def validate_config(
             )
         )
 
+    developer_tools = config.get("developer_tools", {})
+    if not isinstance(developer_tools, dict):
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "invalid_developer_tools_section",
+                "`developer_tools` must be a configuration object.",
+            )
+        )
+        developer_tools = {}
+
+    for key in ("enabled", "demo_only", "show_demo_screens", "show_runtime_diagnostics"):
+        if not isinstance(developer_tools.get(key), bool):
+            issues.append(
+                ConfigValidationIssue(
+                    "error",
+                    "invalid_developer_tools_boolean",
+                    f"`developer_tools.{key}` must be a boolean.",
+                )
+            )
+
+    if developer_tools.get("demo_only") is False:
+        issues.append(
+            ConfigValidationIssue(
+                "error",
+                "developer_tools_demo_only_required",
+                "`developer_tools.demo_only` must remain true in Phase 25.",
+            )
+        )
+
     alarm = config.get("alarm", {})
     if not isinstance(alarm, dict):
         issues.append(

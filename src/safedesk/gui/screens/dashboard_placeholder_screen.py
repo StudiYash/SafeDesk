@@ -19,7 +19,12 @@ class DashboardPlaceholderScreen(ctk.CTkFrame):
         super().__init__(master, fg_color=ds.CONTENT_BG)
         self.context = context
         self.config = context.load_result.config
-        self.summary = DashboardService(self.config).build_summary()
+        self.summary = DashboardService(
+            self.config,
+            root=context.project_root,
+            configuration_valid=context.report.is_valid,
+            effective_environment=context.settings.environment,
+        ).build_summary()
         self.event_logger = build_logger_from_config(self.config)
         self._log_dashboard_opened()
 

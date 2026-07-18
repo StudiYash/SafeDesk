@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
 from typing import Any
 
 from safedesk.logging.log_models import EventLogResult, EventLogStatus, SafeDeskEvent
+
+MAX_EVENT_PAGE_SIZE = 100
 
 
 class SQLiteLogStore:
@@ -21,7 +24,7 @@ class SQLiteLogStore:
 
         try:
             self.database_path.parent.mkdir(parents=True, exist_ok=True)
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection:
                 if self._events_table_exists(connection) and "event_number" not in self._table_columns(connection):
                     self._migrate_legacy_events_table(connection)
                 self._create_schema(connection)
@@ -29,6 +32,7 @@ class SQLiteLogStore:
                 connection.execute("CREATE INDEX IF NOT EXISTS idx_events_category ON events(category)")
                 connection.execute("CREATE INDEX IF NOT EXISTS idx_events_severity ON events(severity)")
                 connection.execute("CREATE INDEX IF NOT EXISTS idx_events_event_number ON events(event_number)")
+                connection.commit()
         except Exception:
             return EventLogResult(False, "storage_error", "Local event log database could not be initialized.")
 
@@ -42,7 +46,7 @@ class SQLiteLogStore:
             return init_result
 
         try:
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection:
                 connection.execute(
                     """
                     INSERT INTO events (
@@ -72,6 +76,7 @@ class SQLiteLogStore:
                         event.session_id,
                     ),
                 )
+                connection.commit()
         except Exception:
             return EventLogResult(False, "storage_error", "Event could not be written to local SQLite logs.")
 
@@ -84,7 +89,7 @@ class SQLiteLogStore:
             return []
 
         try:
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection:
                 if "event_number" not in self._table_columns(connection):
                     return []
                 if limit is None:
@@ -118,7 +123,7 @@ class SQLiteLogStore:
 
         safe_limit = max(1, int(limit))
         try:
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection:
                 if "event_number" not in self._table_columns(connection):
                     return []
                 rows = connection.execute(
@@ -135,13 +140,38 @@ class SQLiteLogStore:
 
         return [self._event_from_row(row) for row in rows]
 
+    def list_event_page(self, limit: int = 50, offset: int = 0) -> list[SafeDeskEvent]:
+        """Return one bounded newest-first page of events."""
+
+        safe_limit, safe_offset = self._normalize_page_request(limit, offset)
+        if not self.database_path.exists():
+            return []
+
+        try:
+            with closing(sqlite3.connect(self.database_path)) as connection:
+                if "event_number" not in self._table_columns(connection):
+                    return []
+                rows = connection.execute(
+                    """
+                    SELECT event_number, event_id, timestamp, category, action, status, severity, message, metadata_json, source, session_id
+                    FROM events
+                    ORDER BY event_number DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                    (safe_limit, safe_offset),
+                ).fetchall()
+        except Exception:
+            return []
+
+        return [self._event_from_row(row) for row in rows]
+
     def count_events(self) -> int:
         """Return the number of stored events."""
 
         if not self.database_path.exists():
             return 0
         try:
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection:
                 return int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
         except Exception:
             return 0
@@ -168,7 +198,7 @@ class SQLiteLogStore:
             return EventLogResult(True, "cleared", "No local event logs were present.", deleted_count=0)
 
         try:
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection:
                 if not self._events_table_exists(connection):
                     return EventLogResult(True, "cleared", "No local event records were present.", deleted_count=0)
                 deleted_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
@@ -176,7 +206,6 @@ class SQLiteLogStore:
                 if self._events_table_exists(connection) and "sqlite_sequence" in self._sqlite_master_tables(connection):
                     connection.execute("DELETE FROM sqlite_sequence WHERE name = ?", ("events",))
                 connection.commit()
-                connection.execute("VACUUM")
         except Exception:
             return EventLogResult(False, "storage_error", "Local event logs could not be cleared.")
 
@@ -186,6 +215,14 @@ class SQLiteLogStore:
         """Backward-compatible wrapper for clearing local demo event logs."""
 
         return self.clear_events()
+
+    @staticmethod
+    def _normalize_page_request(limit: int, offset: int) -> tuple[int, int]:
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+            raise ValueError("Event page limit must be a positive integer.")
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise ValueError("Event page offset must be a non-negative integer.")
+        return min(limit, MAX_EVENT_PAGE_SIZE), offset
 
     @staticmethod
     def _event_from_row(row: tuple[Any, ...]) -> SafeDeskEvent:
